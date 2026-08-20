@@ -1,0 +1,300 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,500;9..40,600;9..40,700&family=Inter:wght@400;500;600&display=swap');
+
+:root {
+    /* Color System */
+    --bg-main: #FAF9F4;
+    --bg-surface: #FFFFFF;
+    --primary: #2F6B3F;
+    --primary-hover: #245530;
+    --secondary: #DCEED8;
+    --accent: #F59E0B;
+    --text-primary: #17231A;
+    --text-secondary: #66736A;
+    --border-light: #E5E9E3;
+
+    /* Harder edges for editorial feel */
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --shadow-subtle: 0 2px 8px rgba(23, 35, 26, 0.04);
+    --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg-main);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6, .brand-font {
+    font-family: 'DM Sans', sans-serif;
+    color: var(--text-primary);
+}
+
+/* ================= ANNOUNCEMENT & NAVBAR ================= */
+.announcement-bar {
+    background-color: var(--secondary);
+    color: var(--primary);
+    font-size: 13px;
+    font-weight: 500;
+    text-align: center;
+    padding: 6px 0;
+    letter-spacing: 0.2px;
+}
+
+.navbar {
+    background-color: var(--bg-main); /* Match bg để tạo cảm giác liền mạch, không tách rời */
+    padding-top: 16px;
+    padding-bottom: 16px;
+}
+
+.navbar-brand {
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    font-size: 22px;
+}
+
+.nav-link {
+    color: var(--text-primary);
+    font-weight: 500;
+    font-size: 15px;
+    padding: 0 16px !important;
+}
+
+/* Thu nhỏ Search Bar để nhường chỗ cho Nav */
+.search-bar-wrapper {
+    background: var(--bg-surface);
+    border-radius: var(--radius-sm);
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--border-light);
+    width: 180px; /* Thu hẹp lại */
+}
+.search-bar-wrapper input {
+    background: transparent;
+    border: none;
+    outline: none;
+    font-size: 13px;
+    margin-left: 8px;
+    width: 100%;
+}
+
+/* ================= EDITORIAL HERO ================= */
+.hero-section {
+    padding-top: 32px; /* Giảm khoảng trắng thừa */
+    padding-bottom: 80px;
+}
+
+/* Signature Visual */
+.signature-tag {
+    display: inline-block;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--primary);
+    border: 1px solid var(--primary);
+    padding: 4px 12px;
+    border-radius: 999px;
+    margin-bottom: 24px;
+}
+
+.hero-title {
+    font-size: 60px;
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    line-height: 1.05;
+    margin-bottom: 20px;
+}
+
+.hero-text {
+    font-size: 16px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    max-width: 90%;
+    margin-bottom: 32px;
+}
+
+.btn-primary-custom {
+    background-color: var(--primary);
+    color: #fff;
+    border-radius: var(--radius-sm);
+    padding: 12px 24px;
+    font-weight: 600;
+    border: none;
+}
+
+.btn-secondary-link {
+    color: var(--text-primary);
+    font-weight: 600;
+    text-decoration: none;
+    font-size: 15px;
+    border-bottom: 1px solid var(--text-primary);
+    padding-bottom: 2px;
+}
+
+/* Asymmetric Image Composition */
+.hero-image-wrapper {
+    position: relative;
+    width: 90%;
+    margin-left: auto;
+    aspect-ratio: 4/5; /* Tỉ lệ dọc mang tính editorial nhiếp ảnh */
+}
+
+.hero-image-wrapper img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: var(--radius-md); /* Bớt bo tròn để trông cứng cáp hơn */
+}
+
+/* Thực dụng hơn: Không shadow to, typography nét gọn */
+.commerce-float-card {
+    position: absolute;
+    bottom: 32px;
+    left: -40px; /* Lệch hẳn ra ngoài để tạo asymmetry */
+    background: var(--bg-surface);
+    padding: 16px 20px;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-subtle);
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+/* ================= PRODUCT CARD HIERARCHY ================= */
+.product-card {
+    background: transparent; /* Bỏ border ngoài cùng, nhìn xịn hơn */
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.product-img-wrapper {
+    background: var(--bg-surface);
+    border-radius: var(--radius-md);
+    aspect-ratio: 1/1;
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 12px;
+    border: 1px solid var(--border-light);
+}
+
+.product-img-wrapper img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 16px;
+    transition: transform 0.3s ease;
+}
+
+.product-card:hover .product-img-wrapper img {
+    transform: scale(1.03);
+}
+
+.product-origin {
+    font-size: 12px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+}
+
+.product-title {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.product-rating {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.product-rating i { color: var(--accent); font-size: 11px; }
+
+.product-price-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: auto;
+}
+
+.product-price {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary); /* Đổi về đen, trông premium hơn xanh */
+}
+
+.btn-add-text {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-light);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    transition: var(--transition);
+}
+.product-card:hover .btn-add-text {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+/* ================= REVIEWS & TRUST ================= */
+.review-card {
+    background: var(--bg-surface);
+    padding: 24px;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+}
+.trust-strip {
+    border-top: 1px solid var(--border-light);
+    border-bottom: 1px solid var(--border-light);
+    padding: 24px 0;
+    font-size: 14px;
+    font-weight: 500;
+}
+/* ================= PRODUCT DETAIL ================= */
+.qty-input-group {
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    width: 140px;
+    height: 48px;
+    overflow: hidden;
+}
+.qty-btn {
+    background: transparent;
+    border: none;
+    width: 40px;
+    height: 100%;
+    font-size: 18px;
+    color: var(--text-secondary);
+    transition: var(--transition);
+}
+.qty-btn:hover {
+    background: var(--bg-main);
+    color: var(--primary);
+}
+.qty-input {
+    border: none;
+    text-align: center;
+    width: 60px;
+    font-weight: 600;
+    font-size: 16px;
+    outline: none;
+}
+.qty-input::-webkit-outer-spin-button,
+.qty-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
