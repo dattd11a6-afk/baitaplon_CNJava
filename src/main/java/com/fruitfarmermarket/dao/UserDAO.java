@@ -7,6 +7,8 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.List;
+import java.util.ArrayList;
 
 public class UserDAO {
 
@@ -78,4 +80,27 @@ public class UserDAO {
         }
         return false;
     }
+    // Lấy danh sách user theo Role (Dùng cho trang Quản lý Khách hàng và Nhân viên)
+    public List<User> getUsersByRole(String role) {
+        List<User> list = new ArrayList<>();
+        String sql = "SELECT * FROM users WHERE role = ? ORDER BY id DESC";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, role);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    User u = new User();
+                    u.setId(rs.getInt("id"));
+                    u.setFullName(rs.getString("full_name"));
+                    u.setEmail(rs.getString("email"));
+                    u.setPhone(rs.getString("phone"));
+                    u.setAddress(rs.getString("address"));
+                    u.setRole(rs.getString("role"));
+                    list.add(u);
+                }
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return list;
+    }
 }
+

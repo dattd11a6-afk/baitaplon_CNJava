@@ -3,36 +3,93 @@ package com.fruitfarmermarket.dao;
 import com.fruitfarmermarket.model.Category;
 import com.fruitfarmermarket.utils.DBConnection;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
 public class CategoryDAO {
 
-    // Lấy tất cả danh mục đang hoạt động
-    public List<Category> getAllActiveCategories() {
+    // Dành cho Admin (Lấy tất cả kể cả đã ẩn)
+    public List<Category> getAllCategoriesForAdmin() {
         List<Category> list = new ArrayList<>();
-        String sql = "SELECT * FROM categories WHERE status = 'ACTIVE' ORDER BY name ASC";
-
+        String sql = "SELECT * FROM categories ORDER BY id ASC";
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
-
             while (rs.next()) {
-                Category cat = new Category();
-                cat.setId(rs.getInt("id"));
-                cat.setName(rs.getString("name"));
-                cat.setDescription(rs.getString("description"));
-                cat.setStatus(rs.getString("status"));
-                cat.setCreatedAt(rs.getTimestamp("created_at"));
-                list.add(cat);
+                Category c = new Category();
+                c.setId(rs.getInt("id"));
+                c.setName(rs.getString("name"));
+                c.setDescription(rs.getString("description"));
+                c.setStatus(rs.getString("status"));
+                list.add(c);
             }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return list;
+    }
+
+    // Dành cho form hiển thị (Chỉ lấy danh mục ACTIVE)
+    public List<Category> getAllActiveCategories() {
+        List<Category> list = new ArrayList<>();
+        String sql = "SELECT * FROM categories WHERE status = 'ACTIVE' ORDER BY id ASC";
+        try (Connection conn = DBConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                Category c = new Category();
+                c.setId(rs.getInt("id"));
+                c.setName(rs.getString("name"));
+                c.setDescription(rs.getString("description"));
+                c.setStatus(rs.getString("status"));
+                list.add(c);
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return list;
+    }
+
+    public String insertCategory(Category c) {
+        String sql = "INSERT INTO categories (name, description, status) VALUES (?, ?, ?)";
+        try (Connection conn = DBConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, c.getName());
+            ps.setString(2, c.getDescription());
+            ps.setString(3, c.getStatus());
+            ps.executeUpdate();
+            return "SUCCESS";
         } catch (SQLException e) {
             e.printStackTrace();
+            return e.getMessage();
         }
-        return list;
+    }
+
+    public String updateCategory(Category c) {
+        String sql = "UPDATE categories SET name=?, description=?, status=? WHERE id=?";
+        try (Connection conn = DBConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, c.getName());
+            ps.setString(2, c.getDescription());
+            ps.setString(3, c.getStatus());
+            ps.setInt(4, c.getId());
+            ps.executeUpdate();
+            return "SUCCESS";
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return e.getMessage();
+        }
+    }
+
+    public boolean deleteCategory(int id) {
+        // Cố gắng xóa hẳn
+        String sqlDelete = "DELETE FROM categories WHERE id = ?";
+        try (Connection conn = DBConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sqlDelete)) {
+            ps.setInt(1, id);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            // Nếu có sản phẩm đang dùng danh mục này -> Xóa mềm (Đổi status)
+            String sqlSoftDelete = "UPDATE categories SET status = 'INACTIVE' WHERE id = ?";
+            try (Connection conn2 = DBConnection.getConnection(); PreparedStatement ps2 = conn2.prepareStatement(sqlSoftDelete)) {
+                ps2.setInt(1, id);
+                return ps2.executeUpdate() > 0;
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+                return false;
+            }
+        }
     }
 }

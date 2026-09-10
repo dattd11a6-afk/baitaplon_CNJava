@@ -12,6 +12,7 @@ public class User {
     private String role;
     private String status;
     private Timestamp createdAt;
+    private String avatar;
 
     public User() {}
 
@@ -44,4 +45,6 @@ public class User {
     public void setStatus(String status) { this.status = status; }
     public Timestamp getCreatedAt() { return createdAt; }
     public void setCreatedAt(Timestamp createdAt) { this.createdAt = createdAt; }
+    public String getAvatar() { return avatar; }
+    public void setAvatar(String avatar) { this.avatar = avatar; }
 }

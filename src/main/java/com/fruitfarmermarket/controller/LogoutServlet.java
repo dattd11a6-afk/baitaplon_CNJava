@@ -10,16 +10,17 @@ import java.io.IOException;
 
 @WebServlet("/logout")
 public class LogoutServlet extends HttpServlet {
-
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        // Lấy session hiện tại (nếu có) và xóa nó đi
+        // Lấy session hiện tại (nếu có)
         HttpSession session = request.getSession(false);
+
         if (session != null) {
+            // Hủy toàn bộ dữ liệu trong session (User, Giỏ hàng, Quyền...)
             session.invalidate();
         }
 
-        // Điều hướng về trang chủ
+        // Đẩy về trang chủ của khách hàng
         response.sendRedirect(request.getContextPath() + "/");
     }
 }
