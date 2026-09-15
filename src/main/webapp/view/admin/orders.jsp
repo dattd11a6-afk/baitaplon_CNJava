@@ -37,7 +37,7 @@
             <div>
                 <div class="fw-bold fs-6 brand-font">Fruit Farmer</div>
                 <!-- TÌM ĐẾN DÒNG NÀY ĐỂ ĐỔI CHỮ "ADMIN CONSOLE" NHÉ BÁC -->
-                <div style="font-size: 10px; color:#9CA3AF; letter-spacing: 1px;">ADMIN CONSOLE</div>
+                <div class="fw-bold fs-5 brand-font text-white"></div>
             </div>
         </div>
         <ul class="sidebar-menu mt-4">

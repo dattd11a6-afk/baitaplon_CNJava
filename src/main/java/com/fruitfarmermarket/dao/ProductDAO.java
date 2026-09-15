@@ -13,9 +13,7 @@ import java.util.List;
 
 public class ProductDAO {
 
-    // ==========================================
-    // CÁC HÀM DÀNH CHO TRANG KHÁCH HÀNG (SHOP)
-    // ==========================================
+    // CÁC HÀM DÀNH CHO TRANG KHÁCH HÀNG
     public List<Product> getProducts(String keyword, Integer categoryId, BigDecimal minPrice, BigDecimal maxPrice, String sort, int page, int pageSize) {
         List<Product> list = new ArrayList<>();
         List<Object> params = new ArrayList<>();

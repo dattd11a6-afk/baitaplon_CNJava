@@ -14,6 +14,7 @@ import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.util.List;
 
+// đặt hàng
 @WebServlet({"/orders", "/order-detail"})
 public class OrderServlet extends HttpServlet {
     private OrderDAO orderDAO;

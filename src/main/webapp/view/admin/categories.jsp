@@ -35,7 +35,8 @@
     <aside class="sidebar">
         <div class="p-4 d-flex align-items-center gap-3 border-bottom" style="border-color: rgba(255,255,255,0.05) !important;">
             <i class="ph-fill ph-leaf fs-3" style="color: var(--primary);"></i>
-            <div><div class="fw-bold fs-6 brand-font">Fruit Farmer</div><div style="font-size: 10px; color:#9CA3AF; letter-spacing: 1px;">ADMIN CONSOLE</div></div>
+
+            <div class="fw-bold fs-5 brand-font text-white">Fruit Farmer</div>
         </div>
         <ul class="sidebar-menu mt-4">
             <li><a href="${pageContext.request.contextPath}/admin/dashboard"><i class="ph ph-squares-four"></i> Tổng quan</a></li>
@@ -51,7 +52,7 @@
     </aside>
 
     <main class="flex-grow-1 overflow-auto" style="height: 100vh;">
-        <header class="topbar"><div class="fw-medium text-muted">Hệ thống Quản trị</div></header>
+        <header class="topbar"></header>
         <div class="p-4 px-5">
             <div class="d-flex justify-content-between align-items-end mb-4">
                 <div>

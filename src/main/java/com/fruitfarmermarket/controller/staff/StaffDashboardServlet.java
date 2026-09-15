@@ -15,6 +15,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
 
+// Trang chủ nhân viên
 @WebServlet("/staff/dashboard")
 public class StaffDashboardServlet extends HttpServlet {
     private ReportDAO reportDAO;
@@ -36,14 +37,13 @@ public class StaffDashboardServlet extends HttpServlet {
         int pendingOrders = reportDAO.getOrderCountByStatus("PENDING");
         int preparingOrders = reportDAO.getOrderCountByStatus("PREPARING");
         int shippingOrders = reportDAO.getOrderCountByStatus("SHIPPING");
-        int completedToday = reportDAO.getOrderCountByStatus("COMPLETED"); // Giả lập đếm, sau này có thể tách query theo ngày
+        int completedToday = reportDAO.getOrderCountByStatus("COMPLETED");
 
-        // 2. Lấy 5 đơn mới nhất đang chờ xác nhận (Để Staff click xử lý ngay)
-        // (Sử dụng lại getRecentOrders, sau này sẽ viết riêng getPendingOrders)
+        // 2. Lấy 5 đơn mới nhất đang chờ xác nhận
         List<Order> recentOrders = orderDAO.getRecentOrders(5);
 
         // 3. Lấy cảnh báo tồn kho (Cần báo để nhắc Admin nhập hàng)
-        List<Product> lowStockProducts = productDAO.getLowStockProducts(5, 5); // Tồn <= 5 là mức báo động cho Staff
+        List<Product> lowStockProducts = productDAO.getLowStockProducts(5, 5); // Tồn <= 5 là mức báo động
 
         // Gửi data sang View
         request.setAttribute("pendingOrders", pendingOrders);

@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 
+// đánh giá sản phẩm
 @WebServlet("/review")
 public class ReviewServlet extends HttpServlet {
 

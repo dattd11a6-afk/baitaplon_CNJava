@@ -12,6 +12,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
 
+// Điểm danh ca làm việc
 @WebServlet("/staff/attendance")
 public class StaffAttendanceServlet extends HttpServlet {
     private AttendanceDAO attendanceDAO = new AttendanceDAO();

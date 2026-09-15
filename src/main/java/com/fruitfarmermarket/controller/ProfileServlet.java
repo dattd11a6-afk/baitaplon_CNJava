@@ -16,6 +16,7 @@ import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 
+// trang cá nhân
 @WebServlet("/profile")
 @MultipartConfig(fileSizeThreshold = 1024 * 1024, maxFileSize = 1024 * 1024 * 2, maxRequestSize = 1024 * 1024 * 5) // Cho phép upload file max 2MB
 public class ProfileServlet extends HttpServlet {

@@ -2,9 +2,11 @@ package com.fruitfarmermarket.controller;
 
 import com.fruitfarmermarket.dao.ProductDAO;
 import com.fruitfarmermarket.dao.OrderDAO;
+import com.fruitfarmermarket.dao.VoucherDAO;
 import com.fruitfarmermarket.model.CartItem;
 import com.fruitfarmermarket.model.Product;
 import com.fruitfarmermarket.model.OrderDetail;
+import com.fruitfarmermarket.model.Voucher;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -21,13 +23,16 @@ import java.util.List;
 public class CartServlet extends HttpServlet {
     private ProductDAO productDAO;
     private OrderDAO orderDAO;
+    private VoucherDAO voucherDAO;
 
     @Override
     public void init() {
         productDAO = new ProductDAO();
         orderDAO = new OrderDAO();
+        voucherDAO = new VoucherDAO();
     }
 
+    // Hiển thị Giỏ hàng
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         HttpSession session = request.getSession();
@@ -40,10 +45,16 @@ public class CartServlet extends HttpServlet {
             }
         }
 
+        // ĐẨY DANH SÁCH VOUCHER TỪ DB LÊN ĐỂ SHOW RA POPUP
+        List<Voucher> availableVouchers = voucherDAO.getAllVouchers();
+        request.setAttribute("availableVouchers", availableVouchers);
+
+        session.setAttribute("cartSubtotal", cartTotal);
         request.setAttribute("cartTotal", cartTotal);
         request.getRequestDispatcher("/view/user/cart.jsp").forward(request, response);
     }
 
+    // Xử lý logic (Thêm/Sửa/Xóa/Voucher) - GIỮ NGUYÊN BẢN CŨ 100%
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         String action = request.getParameter("action");
@@ -56,22 +67,65 @@ public class CartServlet extends HttpServlet {
         }
 
         try {
-            // LUỒNG 1: KHÁCH HÀNG BẤM "MUA LẠI" TỪ TRANG LỊCH SỬ ĐƠN HÀNG
+            // TÍNH NĂNG VOUCHER
+            if ("apply_voucher".equals(action)) {
+                String code = request.getParameter("voucherCode").trim().toUpperCase();
+                BigDecimal cartSubtotal = (BigDecimal) session.getAttribute("cartSubtotal");
+
+                if (cartSubtotal == null) cartSubtotal = BigDecimal.ZERO;
+
+                Voucher voucher = voucherDAO.getVoucherByCode(code);
+
+                if (voucher == null || !"ACTIVE".equals(voucher.getStatus())) {
+                    session.setAttribute("errorMsg", "Mã khuyến mãi không tồn tại hoặc đã bị khóa!");
+                } else if (voucher.getUsageLimit() <= 0) {
+                    session.setAttribute("errorMsg", "Mã khuyến mãi đã hết lượt sử dụng!");
+                } else if (voucher.getExpiryDate().before(new java.util.Date())) {
+                    session.setAttribute("errorMsg", "Mã khuyến mãi đã hết hạn!");
+                } else if (cartSubtotal.compareTo(voucher.getMinOrderAmount()) < 0) {
+                    session.setAttribute("errorMsg", "Đơn hàng chưa đạt giá trị tối thiểu để dùng mã này!");
+                } else {
+                    BigDecimal discount = BigDecimal.ZERO;
+                    if ("PERCENT".equals(voucher.getType())) {
+                        discount = cartSubtotal.multiply(voucher.getDiscountValue().divide(new BigDecimal(100)));
+                        if (voucher.getMaxDiscountAmount() != null && discount.compareTo(voucher.getMaxDiscountAmount()) > 0) {
+                            discount = voucher.getMaxDiscountAmount();
+                        }
+                    } else {
+                        discount = voucher.getDiscountValue();
+                    }
+
+                    if (discount.compareTo(cartSubtotal) > 0) discount = cartSubtotal;
+
+                    session.setAttribute("appliedVoucher", voucher);
+                    session.setAttribute("discountAmount", discount);
+                    session.setAttribute("successMsg", "Áp dụng mã giảm giá thành công!");
+                }
+                response.sendRedirect(request.getContextPath() + "/cart");
+                return;
+            }
+            else if ("remove_voucher".equals(action)) {
+                session.removeAttribute("appliedVoucher");
+                session.removeAttribute("discountAmount");
+                session.setAttribute("successMsg", "Đã gỡ mã giảm giá!");
+                response.sendRedirect(request.getContextPath() + "/cart");
+                return;
+            }
+
+            // LUỒNG CŨ: MUA LẠI
             if ("repurchase".equals(action)) {
                 int orderId = Integer.parseInt(request.getParameter("orderId"));
                 List<OrderDetail> oldOrderDetails = orderDAO.getOrderDetailsByOrderId(orderId);
-
                 for (OrderDetail od : oldOrderDetails) {
                     addToCart(cart, od.getProductId(), od.getQuantity(), request);
                 }
-
                 session.setAttribute("cart", cart);
                 session.setAttribute("successMsg", "Đã thêm các sản phẩm từ đơn cũ vào Giỏ hàng!");
                 response.sendRedirect(request.getContextPath() + "/cart");
                 return;
             }
 
-            // LUỒNG 2: CÁC ACTION CŨ (THÊM, SỬA, XÓA) - BẮT BUỘC CÓ ID
+            // LUỒNG CŨ: THÊM, SỬA, XÓA
             if ("clear".equals(action)) {
                 cart.clear();
             } else {
@@ -96,9 +150,10 @@ public class CartServlet extends HttpServlet {
             session.setAttribute("errorMsg", "Có lỗi xảy ra, vui lòng thử lại!");
         }
 
+        session.removeAttribute("appliedVoucher");
+        session.removeAttribute("discountAmount");
         session.setAttribute("cart", cart);
 
-        // Chuyển hướng
         if ("add".equals(action)) {
             response.sendRedirect(request.getContextPath() + "/product?id=" + request.getParameter("id"));
         } else {
@@ -106,7 +161,6 @@ public class CartServlet extends HttpServlet {
         }
     }
 
-    // --- CÁC HÀM XỬ LÝ LOGIC (Giữ nguyên của pác) ---
     private void addToCart(List<CartItem> cart, int productId, int quantityToAdd, HttpServletRequest request) {
         Product product = productDAO.getProductById(productId);
         if (product == null || product.getStock() <= 0) return;

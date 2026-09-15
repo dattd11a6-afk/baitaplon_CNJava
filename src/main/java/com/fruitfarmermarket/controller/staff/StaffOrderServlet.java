@@ -13,6 +13,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
 
+// Gọi đồ
 @WebServlet({"/staff/orders", "/staff/order-detail"})
 public class StaffOrderServlet extends HttpServlet {
     private OrderDAO orderDAO = new OrderDAO();
@@ -30,7 +31,8 @@ public class StaffOrderServlet extends HttpServlet {
             request.setAttribute("details", details);
             request.getRequestDispatcher("/view/staff/order-detail.jsp").forward(request, response);
         } else {
-            // Lấy toàn bộ đơn hàng cho Staff
+
+            // Lấy toàn bộ đơn hàng
             List<Order> orders = orderDAO.getAllOrdersForAdmin();
             request.setAttribute("orders", orders);
             request.getRequestDispatcher("/view/staff/orders.jsp").forward(request, response);
@@ -56,6 +58,7 @@ public class StaffOrderServlet extends HttpServlet {
             success = orderDAO.cancelOrderWithStockRestore(orderId, staffId, reason, details);
             if(success) request.getSession().setAttribute("successMsg", "Đã hủy đơn hàng và hoàn lại tồn kho.");
         } else {
+
             // Nghiệp vụ ĐỔI TRẠNG THÁI BÌNH THƯỜNG
             String newStatus = action;
             success = orderDAO.updateOrderStatusWithHistory(orderId, oldStatus, newStatus, staffId, "Staff cập nhật trạng thái");

@@ -154,7 +154,9 @@
                             <span class="text-muted" style="font-size: 13px;">Mã đơn: #DH${o.id}</span>
                             <div class="fs-6">Thành tiền: <span class="fw-bold text-success fs-4 ms-2"><fmt:formatNumber value="${o.totalAmount}" type="currency" currencySymbol="₫" maxFractionDigits="0"/></span></div>
                         </div>
-                        <div class="d-flex justify-content-end gap-3">
+
+                        <!-- CÁC NÚT THAO TÁC CỦA ĐƠN HÀNG -->
+                        <div class="d-flex justify-content-end gap-3 align-items-center">
                             <c:choose>
                                 <c:when test="${o.orderStatus == 'SHIPPING'}">
                                     <button class="btn-shopee-outline btn-track" data-id="${o.id}" data-status="${o.orderStatus}" data-bs-toggle="modal" data-bs-target="#trackingModal">Theo dõi đơn</button>
@@ -164,6 +166,7 @@
                                         <button type="submit" class="btn-shopee-primary">Đã nhận được hàng</button>
                                     </form>
                                 </c:when>
+
                                 <c:when test="${o.orderStatus == 'COMPLETED'}">
                                     <form action="${pageContext.request.contextPath}/cart" method="POST" class="m-0">
                                         <input type="hidden" name="action" value="repurchase">
@@ -172,14 +175,65 @@
                                     </form>
                                     <button class="btn-shopee-primary btn-rate" data-order="${o.id}" data-bs-toggle="modal" data-bs-target="#ratingModal">Đánh giá</button>
                                 </c:when>
+
                                 <c:when test="${o.orderStatus == 'CANCELLED'}">
+                                    <div class="text-danger me-auto fw-medium" style="font-size: 13px;">
+                                        <i class="ph-fill ph-warning-circle"></i> Lý do hủy: ${o.cancelReason}
+                                    </div>
                                     <button class="btn-shopee-primary w-auto bg-secondary" disabled>Đơn đã hủy</button>
                                 </c:when>
+
                                 <c:otherwise>
+                                    <!-- NẾU CHƯA XÁC NHẬN HOẶC ĐANG CHUẨN BỊ THÌ HIỆN NÚT THEO DÕI VÀ NÚT HỦY ĐƠN -->
                                     <button class="btn-shopee-outline btn-track" data-id="${o.id}" data-status="${o.orderStatus}" data-bs-toggle="modal" data-bs-target="#trackingModal">Tiến độ</button>
-                                    <button class="btn-shopee-primary w-auto bg-warning border-0" disabled>Chờ shop xác nhận</button>
+                                    <button class="btn btn-outline-danger btn-sm fw-medium px-4 py-2" data-bs-toggle="modal" data-bs-target="#cancelOrderModal${o.id}">Hủy đơn</button>
                                 </c:otherwise>
                             </c:choose>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MODAL HỦY ĐƠN (SHOPEE STYLE) -->
+                <div class="modal fade" id="cancelOrderModal${o.id}" tabindex="-1">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content border-0 rounded-4">
+                            <form action="${pageContext.request.contextPath}/orders/history" method="POST">
+                                <div class="modal-header border-bottom-0 pb-0">
+                                    <h5 class="modal-title fw-bold text-dark">Lý do hủy đơn hàng #${o.id}</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <input type="hidden" name="action" value="cancel_order">
+                                    <input type="hidden" name="orderId" value="${o.id}">
+
+                                    <div class="alert alert-warning border-0 bg-warning-subtle text-warning-emphasis" style="font-size: 13px;">
+                                        <i class="ph-fill ph-warning-circle me-1"></i> Vui lòng chọn lý do hủy. Thao tác này không thể hoàn tác.
+                                    </div>
+
+                                    <div class="form-check mb-3">
+                                        <input class="form-check-input" type="radio" name="reasonType" value="Muốn thay đổi địa chỉ giao hàng" id="r1_${o.id}" required>
+                                        <label class="form-check-label fw-medium text-dark" for="r1_${o.id}">Muốn thay đổi địa chỉ giao hàng</label>
+                                    </div>
+                                    <div class="form-check mb-3">
+                                        <input class="form-check-input" type="radio" name="reasonType" value="Muốn nhập/thay đổi mã Voucher" id="r2_${o.id}">
+                                        <label class="form-check-label fw-medium text-dark" for="r2_${o.id}">Muốn thay đổi mã Voucher</label>
+                                    </div>
+                                    <div class="form-check mb-3">
+                                        <input class="form-check-input" type="radio" name="reasonType" value="Đổi ý, không muốn mua nữa" id="r3_${o.id}">
+                                        <label class="form-check-label fw-medium text-dark" for="r3_${o.id}">Đổi ý, không muốn mua nữa</label>
+                                    </div>
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="radio" name="reasonType" value="Khác" id="r4_${o.id}">
+                                        <label class="form-check-label fw-medium text-dark" for="r4_${o.id}">Lý do khác</label>
+                                    </div>
+                                    <!-- Ô nhập text sẽ tự hiện khi chọn "Lý do khác" -->
+                                    <textarea class="form-control mt-2 d-none" id="otherReason${o.id}" name="reasonOther" rows="2" placeholder="Nhập lý do của bạn (bắt buộc)..."></textarea>
+                                </div>
+                                <div class="modal-footer border-top-0 pt-0">
+                                    <button type="button" class="btn btn-light fw-medium" data-bs-dismiss="modal">Không</button>
+                                    <button type="submit" class="btn btn-danger fw-bold px-4">Xác nhận Hủy</button>
+                                </div>
+                            </form>
                         </div>
                     </div>
                 </div>
@@ -234,9 +288,24 @@
     </div>
 </div>
 
+<!-- TOAST THÔNG BÁO -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1100;">
+    <c:if test="${not empty sessionScope.successMsg}">
+        <div class="toast align-items-center text-bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex"><div class="toast-body"><i class="ph-fill ph-check-circle me-2"></i> ${sessionScope.successMsg}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>
+        </div><c:remove var="successMsg" scope="session" />
+    </c:if>
+    <c:if test="${not empty sessionScope.errorMsg}">
+        <div class="toast align-items-center text-bg-danger border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex"><div class="toast-body"><i class="ph-fill ph-warning-circle me-2"></i> ${sessionScope.errorMsg}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>
+        </div><c:remove var="errorMsg" scope="session" />
+    </c:if>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function() {
+    // Xử lý Tabs trạng thái
     const tabs = document.querySelectorAll('.tab-item');
     const cards = document.querySelectorAll('.order-card');
     tabs.forEach(tab => {
@@ -252,6 +321,7 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     });
 
+    // Tracking Modal Logic
     document.getElementById('trackingModal').addEventListener('show.bs.modal', function (event) {
         const button = event.relatedTarget;
         document.getElementById('modalOrderId').innerText = '#DH' + button.getAttribute('data-id');
@@ -266,6 +336,7 @@ document.addEventListener("DOMContentLoaded", function() {
         document.getElementById('modalTrackingBody').innerHTML = html;
     });
 
+    // Rating Modal Logic
     document.getElementById('ratingModal').addEventListener('show.bs.modal', function (event) {
         const button = event.relatedTarget;
         const orderId = button.getAttribute('data-order');
@@ -291,6 +362,25 @@ document.addEventListener("DOMContentLoaded", function() {
             ratingText.textContent = texts[ratingInput.value - 1];
         });
     });
+
+    // Bật/tắt ô nhập lý do Khác trong Modal Hủy đơn
+    document.addEventListener('change', function(e) {
+        if (e.target.name === 'reasonType') {
+            const orderId = e.target.id.split('_')[1];
+            const otherTextarea = document.getElementById('otherReason' + orderId);
+            if (e.target.value === 'Khác') {
+                otherTextarea.classList.remove('d-none');
+                otherTextarea.required = true;
+            } else {
+                otherTextarea.classList.add('d-none');
+                otherTextarea.required = false;
+            }
+        }
+    });
+
+    // Kích hoạt Toast
+    var toastList = [].slice.call(document.querySelectorAll('.toast')).map(function(toastEl) { return new bootstrap.Toast(toastEl, { delay: 3000 }); });
+    toastList.forEach(toast => toast.show());
 });
 </script>
 </body>

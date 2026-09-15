@@ -16,6 +16,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+// mã giảm giá cho khách hàng
 @WebServlet("/vouchers")
 public class VoucherCustomerServlet extends HttpServlet {
     @Override
@@ -37,9 +38,9 @@ public class VoucherCustomerServlet extends HttpServlet {
                 Map<String, Object> v = new HashMap<>();
                 v.put("id", rs.getInt("id"));
                 v.put("code", rs.getString("code"));
-                v.put("discountAmount", rs.getBigDecimal("discount_amount"));
-                v.put("minOrder", rs.getBigDecimal("min_order_value"));
-                v.put("expirationDate", rs.getDate("expiration_date"));
+                v.put("discountAmount", rs.getBigDecimal("discount_amount")); // % giảm giá
+                v.put("minOrder", rs.getBigDecimal("min_order_value")); // giảm tối đa
+                v.put("expirationDate", rs.getDate("expiration_date")); // hạn sử dụng
                 v.put("type", rs.getString("type")); // Ví dụ: PERCENT (Phần trăm), AMOUNT (Trừ thẳng tiền), FREESHIP
                 voucherList.add(v);
             }

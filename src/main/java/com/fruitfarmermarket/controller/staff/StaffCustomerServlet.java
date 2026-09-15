@@ -10,10 +10,11 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
 
+// Quản lý khách hàng
 @WebServlet("/staff/customers")
 public class StaffCustomerServlet extends HttpServlet {
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        // Staff chỉ xem danh sách khách hàng để hỗ trợ
+        // Nhân viên chỉ xem danh sách khách hàng để hỗ trợ
         List<User> customers = new UserDAO().getUsersByRole("CUSTOMER");
         request.setAttribute("customers", customers);
         request.getRequestDispatcher("/view/staff/customers.jsp").forward(request, response);

@@ -57,7 +57,6 @@ public class OrderDAO {
                      PreparedStatement psStock = conn.prepareStatement(sqlUpdateStock)) {
 
                     for (CartItem item : cart) {
-                        // Lưu detail
                         psDetail.setInt(1, orderId);
                         psDetail.setInt(2, item.getProduct().getId());
                         psDetail.setString(3, item.getProduct().getName());
@@ -66,7 +65,6 @@ public class OrderDAO {
                         psDetail.setBigDecimal(6, item.getSubtotal());
                         psDetail.addBatch();
 
-                        // Cập nhật kho
                         psStock.setInt(1, item.getQuantity());
                         psStock.setInt(2, item.getProduct().getId());
                         psStock.addBatch();
@@ -76,11 +74,11 @@ public class OrderDAO {
                 }
             }
 
-            conn.commit(); // THÀNH CÔNG -> Lưu thật vào DB
+            conn.commit();
         } catch (SQLException e) {
             e.printStackTrace();
             if (conn != null) {
-                try { conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); } // LỖI -> Hủy bỏ
+                try { conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
             }
             orderId = -1;
         } finally {
@@ -109,6 +107,7 @@ public class OrderDAO {
                     order.setPaymentMethod(rs.getString("payment_method"));
                     order.setPaymentStatus(rs.getString("payment_status"));
                     order.setOrderStatus(rs.getString("order_status"));
+                    order.setCancelReason(rs.getString("cancel_reason")); // Đọc lý do hủy từ DB
                     order.setCreatedAt(rs.getTimestamp("created_at"));
                     list.add(order);
                 }
@@ -142,6 +141,7 @@ public class OrderDAO {
                     order.setPaymentStatus(rs.getString("payment_status"));
                     order.setOrderStatus(rs.getString("order_status"));
                     order.setNote(rs.getString("note"));
+                    order.setCancelReason(rs.getString("cancel_reason")); // Đọc lý do hủy từ DB
                     order.setCreatedAt(rs.getTimestamp("created_at"));
                 }
             }
@@ -180,9 +180,9 @@ public class OrderDAO {
     }
 
     // ==========================================
-    // 5. CÁC HÀM CHO ADMIN DASHBOARD
+    // 5. CÁC HÀM CHO ADMIN DASHBOARD (BẢN FULL)
     // ==========================================
-    // Lấy danh sách 5 đơn hàng mới nhất
+    // Lấy danh sách đơn hàng mới nhất
     public List<Order> getRecentOrders(int limit) {
         List<Order> list = new ArrayList<>();
         String sql = "SELECT * FROM orders ORDER BY created_at DESC LIMIT ?";
@@ -204,6 +204,7 @@ public class OrderDAO {
         } catch (SQLException e) { e.printStackTrace(); }
         return list;
     }
+
     // Lấy TẤT CẢ đơn hàng của hệ thống (Cho Admin)
     public List<Order> getAllOrdersForAdmin() {
         List<Order> list = new ArrayList<>();
@@ -215,9 +216,13 @@ public class OrderDAO {
                 Order order = new Order();
                 order.setId(rs.getInt("id"));
                 order.setReceiverName(rs.getString("receiver_name"));
+                order.setReceiverPhone(rs.getString("receiver_phone"));
+                order.setReceiverAddress(rs.getString("receiver_address"));
                 order.setTotalAmount(rs.getBigDecimal("total_amount"));
                 order.setPaymentMethod(rs.getString("payment_method"));
+                order.setPaymentStatus(rs.getString("payment_status"));
                 order.setOrderStatus(rs.getString("order_status"));
+                order.setCancelReason(rs.getString("cancel_reason"));
                 order.setCreatedAt(rs.getTimestamp("created_at"));
                 list.add(order);
             }
@@ -225,22 +230,19 @@ public class OrderDAO {
         return list;
     }
 
-    // Cập nhật trạng thái đơn hàng (PENDING -> CONFIRMED -> SHIPPING...)
+    // Cập nhật trạng thái đơn hàng
     public boolean updateOrderStatus(int orderId, String status) {
         String sql = "UPDATE orders SET order_status = ? WHERE id = ?";
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, status);
-            ps.setInt(2, orderId);
-            return ps.executeUpdate() > 0;
+        try (Connection conn = DBConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, status); ps.setInt(2, orderId); return ps.executeUpdate() > 0;
         } catch (SQLException e) { e.printStackTrace(); }
         return false;
     }
+
     // ==========================================
     // 6. CÁC HÀM CHO NHÂN VIÊN (STAFF)
     // ==========================================
-
-    // Lấy chi tiết 1 đơn hàng (Không cần check user_id vì Staff được quyền xem mọi đơn)
+    // Lấy chi tiết 1 đơn hàng
     public Order getOrderById(int orderId) {
         Order order = null;
         String sql = "SELECT * FROM orders WHERE id = ?";
@@ -260,6 +262,7 @@ public class OrderDAO {
                     order.setPaymentStatus(rs.getString("payment_status"));
                     order.setOrderStatus(rs.getString("order_status"));
                     order.setNote(rs.getString("note"));
+                    order.setCancelReason(rs.getString("cancel_reason"));
                     order.setCreatedAt(rs.getTimestamp("created_at"));
                 }
             }
@@ -267,7 +270,7 @@ public class OrderDAO {
         return order;
     }
 
-    // Đổi trạng thái đơn hàng & Ghi lịch sử (Sử dụng Transaction)
+    // Đổi trạng thái đơn hàng & Ghi lịch sử
     public boolean updateOrderStatusWithHistory(int orderId, String oldStatus, String newStatus, int changedBy, String reason) {
         Connection conn = null;
         String sqlUpdateOrder = "UPDATE orders SET order_status = ? WHERE id = ?";
@@ -275,16 +278,14 @@ public class OrderDAO {
 
         try {
             conn = DBConnection.getConnection();
-            conn.setAutoCommit(false); // Bắt đầu Transaction
+            conn.setAutoCommit(false);
 
-            // 1. Cập nhật trạng thái Order
             try (PreparedStatement ps1 = conn.prepareStatement(sqlUpdateOrder)) {
                 ps1.setString(1, newStatus);
                 ps1.setInt(2, orderId);
                 ps1.executeUpdate();
             }
 
-            // 2. Ghi lịch sử
             try (PreparedStatement ps2 = conn.prepareStatement(sqlInsertHistory)) {
                 ps2.setInt(1, orderId);
                 ps2.setString(2, oldStatus);
@@ -305,7 +306,7 @@ public class OrderDAO {
         }
     }
 
-    // Hủy đơn hàng & Hoàn lại Tồn kho & Ghi lịch sử (Transaction hạng nặng)
+    // Hủy đơn hàng & Hoàn lại Tồn kho & Ghi lịch sử
     public boolean cancelOrderWithStockRestore(int orderId, int changedBy, String reason, List<OrderDetail> details) {
         Connection conn = null;
         String sqlUpdateOrder = "UPDATE orders SET order_status = 'CANCELLED' WHERE id = ?";
@@ -316,14 +317,12 @@ public class OrderDAO {
             conn = DBConnection.getConnection();
             conn.setAutoCommit(false);
 
-            // 1. Đổi trạng thái thành CANCELLED
             try (PreparedStatement ps1 = conn.prepareStatement(sqlUpdateOrder)) {
                 ps1.setInt(1, orderId);
                 ps1.executeUpdate();
             }
 
-            // 2. Ghi lịch sử hủy đơn
-            Order currentOrder = getOrderById(orderId); // Lấy trạng thái cũ
+            Order currentOrder = getOrderById(orderId);
             try (PreparedStatement ps2 = conn.prepareStatement(sqlInsertHistory)) {
                 ps2.setInt(1, orderId);
                 ps2.setString(2, currentOrder != null ? currentOrder.getOrderStatus() : "UNKNOWN");
@@ -332,7 +331,6 @@ public class OrderDAO {
                 ps2.executeUpdate();
             }
 
-            // 3. Vòng lặp cộng lại Tồn kho cho từng sản phẩm
             try (PreparedStatement ps3 = conn.prepareStatement(sqlRestoreStock)) {
                 for (OrderDetail detail : details) {
                     ps3.setInt(1, detail.getQuantity());
@@ -352,6 +350,7 @@ public class OrderDAO {
             if (conn != null) try { conn.setAutoCommit(true); conn.close(); } catch (SQLException e) { e.printStackTrace(); }
         }
     }
+
     // ==========================================
     // 7. TẠO ĐƠN TẠI QUẦY (POS) CHO STAFF
     // ==========================================
@@ -359,7 +358,6 @@ public class OrderDAO {
         int orderId = -1;
         Connection conn = null;
 
-        // Chú ý: order_source được fix cứng là 'STORE'
         String sqlOrder = "INSERT INTO orders (user_id, receiver_name, receiver_phone, receiver_address, total_amount, payment_method, payment_status, order_status, note, order_source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'STORE')";
         String sqlDetail = "INSERT INTO order_details (order_id, product_id, product_name, price, quantity, subtotal) VALUES (?, ?, ?, ?, ?, ?)";
         String sqlUpdateStock = "UPDATE products SET stock = stock - ? WHERE id = ?";
@@ -369,20 +367,17 @@ public class OrderDAO {
             conn = DBConnection.getConnection();
             conn.setAutoCommit(false);
 
-            // 1. Lưu Order
             try (PreparedStatement psOrder = conn.prepareStatement(sqlOrder, Statement.RETURN_GENERATED_KEYS)) {
-                if (order.getUserId() > 0) {
-                    psOrder.setInt(1, order.getUserId());
-                } else {
-                    psOrder.setNull(1, java.sql.Types.INTEGER); // Khách vãng lai
-                }
+                if (order.getUserId() > 0) psOrder.setInt(1, order.getUserId());
+                else psOrder.setNull(1, java.sql.Types.INTEGER);
+
                 psOrder.setString(2, order.getReceiverName() != null && !order.getReceiverName().isEmpty() ? order.getReceiverName() : "Khách lẻ");
                 psOrder.setString(3, order.getReceiverPhone() != null ? order.getReceiverPhone() : "");
                 psOrder.setString(4, "Mua tại quầy");
                 psOrder.setBigDecimal(5, order.getTotalAmount());
                 psOrder.setString(6, order.getPaymentMethod());
-                psOrder.setString(7, "PAID");       // Mua tại quầy -> Đã thanh toán
-                psOrder.setString(8, "COMPLETED");  // Mua tại quầy -> Hoàn thành
+                psOrder.setString(7, "PAID");
+                psOrder.setString(8, "COMPLETED");
                 psOrder.setString(9, order.getNote());
                 psOrder.executeUpdate();
 
@@ -392,7 +387,6 @@ public class OrderDAO {
             }
 
             if (orderId != -1) {
-                // 2. Lưu Chi tiết & 3. Trừ Stock
                 try (PreparedStatement psDetail = conn.prepareStatement(sqlDetail);
                      PreparedStatement psStock = conn.prepareStatement(sqlUpdateStock)) {
                     for (CartItem item : cart) {
@@ -412,7 +406,6 @@ public class OrderDAO {
                     psStock.executeBatch();
                 }
 
-                // 4. Ghi Lịch sử
                 try (PreparedStatement psHist = conn.prepareStatement(sqlHistory)) {
                     psHist.setInt(1, orderId);
                     psHist.setInt(2, staffId);
@@ -428,5 +421,47 @@ public class OrderDAO {
             if (conn != null) try { conn.setAutoCommit(true); conn.close(); } catch (SQLException e) { e.printStackTrace(); }
         }
         return orderId;
+    }
+
+    // ==========================================
+    // 8. TÍNH NĂNG MỚI: KHÁCH HÀNG TỰ HỦY ĐƠN & HOÀN KHO
+    // ==========================================
+    public boolean cancelOrderByCustomer(int orderId, int userId, String reason, List<OrderDetail> details) {
+        Connection conn = null;
+        String sqlUpdateOrder = "UPDATE orders SET order_status = 'CANCELLED', cancel_reason = ? WHERE id = ? AND user_id = ?";
+        String sqlRestoreStock = "UPDATE products SET stock = stock + ? WHERE id = ?";
+
+        try {
+            conn = DBConnection.getConnection();
+            conn.setAutoCommit(false);
+
+            try (PreparedStatement ps1 = conn.prepareStatement(sqlUpdateOrder)) {
+                ps1.setString(1, reason);
+                ps1.setInt(2, orderId);
+                ps1.setInt(3, userId);
+                if (ps1.executeUpdate() == 0) {
+                    conn.rollback();
+                    return false;
+                }
+            }
+
+            try (PreparedStatement ps2 = conn.prepareStatement(sqlRestoreStock)) {
+                for (OrderDetail detail : details) {
+                    ps2.setInt(1, detail.getQuantity());
+                    ps2.setInt(2, detail.getProductId());
+                    ps2.addBatch();
+                }
+                ps2.executeBatch();
+            }
+
+            conn.commit();
+            return true;
+        } catch (SQLException e) {
+            if (conn != null) try { conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
+            e.printStackTrace();
+            return false;
+        } finally {
+            if (conn != null) try { conn.setAutoCommit(true); conn.close(); } catch (SQLException e) { e.printStackTrace(); }
+        }
     }
 }

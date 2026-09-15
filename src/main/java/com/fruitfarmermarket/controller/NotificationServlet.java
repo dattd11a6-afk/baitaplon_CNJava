@@ -16,6 +16,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+// thông báo
 @WebServlet("/notifications")
 public class NotificationServlet extends HttpServlet {
     @Override

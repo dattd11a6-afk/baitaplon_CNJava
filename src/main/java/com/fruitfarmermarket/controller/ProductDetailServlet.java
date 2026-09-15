@@ -18,6 +18,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+// chi tiết sản phẩm
 @WebServlet("/product")
 public class ProductDetailServlet extends HttpServlet {
     private ProductDAO productDAO;

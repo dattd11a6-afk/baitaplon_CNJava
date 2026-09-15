@@ -91,4 +91,25 @@ public class VoucherDAO {
             return ps.executeUpdate() > 0;
         } catch (SQLException e) { e.printStackTrace(); } return false;
     }
+    // Lấy chi tiết Voucher bằng Code để áp dụng
+    public Voucher getVoucherByCode(String code) {
+        Voucher v = null;
+        String sql = "SELECT * FROM vouchers WHERE code = ?";
+        try (Connection conn = DBConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, code);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) v = mapResultSet(rs);
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return v;
+    }
+
+    // Trừ đi 1 lượt sử dụng khi khách đặt hàng thành công
+    public void decreaseVoucherUsage(int voucherId) {
+        String sql = "UPDATE vouchers SET usage_limit = usage_limit - 1, used_count = used_count + 1 WHERE id = ? AND usage_limit > 0";
+        try (Connection conn = DBConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, voucherId);
+            ps.executeUpdate();
+        } catch (SQLException e) { e.printStackTrace(); }
+    }
 }

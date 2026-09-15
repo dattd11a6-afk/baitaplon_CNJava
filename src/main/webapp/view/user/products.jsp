@@ -12,7 +12,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/css/style.css">
     <style>
-        /* Tinh chỉnh UI cho Product Card */
         .product-card { padding: 10px; border-radius: 8px; transition: transform 0.2s ease, box-shadow 0.2s ease; background: #fff; height: 100%; border: 1px solid transparent; }
         .product-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.05); border-color: #EAEAEC; }
         .product-img-wrapper { position: relative; width: 100%; padding-top: 100%; overflow: hidden; border-radius: 8px; } /* Xóa bg, border ở đây */
@@ -23,7 +22,7 @@
 </head>
 <body class="bg-light">
 
-    <!-- NAVBAR (Giữ nguyên) -->
+    <!-- NAVBAR -->
     <nav class="navbar navbar-expand-lg sticky-top border-bottom bg-white">
         <div class="container">
             <a class="navbar-brand text-success brand-font fw-bold fs-4" href="${pageContext.request.contextPath}/">Fruit Farmer.</a>
@@ -51,7 +50,7 @@
     </nav>
 
     <div class="container py-4">
-        <!-- BREADCRUMB (Đã khôi phục) -->
+        <!-- BREADCRUMB -->
         <nav aria-label="breadcrumb" class="mb-4">
             <ol class="breadcrumb" style="font-size: 13px;">
                 <li class="breadcrumb-item"><a href="${pageContext.request.contextPath}/" class="text-muted text-decoration-none">Trang chủ</a></li>
@@ -62,7 +61,7 @@
         <h2 class="brand-font fs-3 fw-bold mb-4">Tất cả trái cây</h2>
 
         <div class="row">
-            <!-- Cột Lọc (Giữ nguyên) -->
+            <!-- Cột Lọc -->
             <div class="col-lg-3 mb-4 pe-lg-4">
                 <form id="filterForm" action="${pageContext.request.contextPath}/products" method="GET">
                     <input type="hidden" name="page" id="pageInput" value="${currentPage}">

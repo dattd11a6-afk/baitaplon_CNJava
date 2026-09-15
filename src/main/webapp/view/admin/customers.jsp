@@ -37,7 +37,8 @@
     <aside class="sidebar">
         <div class="p-4 d-flex align-items-center gap-3 border-bottom" style="border-color: rgba(255,255,255,0.05) !important;">
             <i class="ph-fill ph-leaf fs-3" style="color: var(--primary);"></i>
-            <div><div class="fw-bold fs-6 brand-font">Fruit Farmer</div><div style="font-size: 10px; color:#9CA3AF; letter-spacing: 1px;">ADMIN CONSOLE</div></div>
+            <!-- DÒNG MỚI TỐI GIẢN -->
+            <div class="fw-bold fs-5 brand-font text-white">Fruit Farmer</div>
         </div>
         <ul class="sidebar-menu mt-4">
             <li><a href="${pageContext.request.contextPath}/admin/dashboard"><i class="ph ph-squares-four"></i> Tổng quan</a></li>
@@ -92,7 +93,7 @@
                                 <td>
                                     <c:choose>
                                         <c:when test="${c.status == 'ACTIVE'}"><span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">Hoạt động</span></c:when>
-                                        <c:otherwise><span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1">Khóa (INACTIVE)</span></c:otherwise>
+                                        <c:otherwise><span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1">Khóa</span></c:otherwise>
                                     </c:choose>
                                 </td>
 

@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.List;
 
+// sản phẩm
 @WebServlet("/products")
 public class ProductServlet extends HttpServlet {
     private ProductDAO productDAO;
@@ -67,7 +68,7 @@ public class ProductServlet extends HttpServlet {
         int totalProducts = productDAO.countProducts(keyword, categoryId, minPrice, maxPrice);
         int totalPages = (int) Math.ceil((double) totalProducts / pageSize);
 
-        // 4. Gắn dữ liệu vào Request để đẩy sang JSP
+        // 4. Gắn dữ liệu vào Request >> JSP
         request.setAttribute("categories", categories);
         request.setAttribute("products", products);
         request.setAttribute("totalProducts", totalProducts);

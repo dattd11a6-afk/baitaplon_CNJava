@@ -18,6 +18,7 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
+// Bán hàng máy POS
 @WebServlet("/staff/pos")
 public class StaffPOSServlet extends HttpServlet {
     private ProductDAO productDAO = new ProductDAO();
@@ -63,7 +64,7 @@ public class StaffPOSServlet extends HttpServlet {
                 }
                 if (!exists) posCart.add(new CartItem(product, 1));
             }
-        } else if ("decrease".equals(action)) { // TÍNH NĂNG MỚI: GIẢM SỐ LƯỢNG
+        } else if ("decrease".equals(action)) { // GIẢM SỐ LƯỢNG
             int productId = Integer.parseInt(request.getParameter("productId"));
             for (int i = 0; i < posCart.size(); i++) {
                 CartItem item = posCart.get(i);
@@ -71,7 +72,7 @@ public class StaffPOSServlet extends HttpServlet {
                     if (item.getQuantity() > 1) {
                         item.setQuantity(item.getQuantity() - 1);
                     } else {
-                        posCart.remove(i); // Giảm về 0 thì tự xóa khỏi giỏ
+                        posCart.remove(i); // về 0 thì tự xóa khỏi giỏ
                     }
                     break;
                 }

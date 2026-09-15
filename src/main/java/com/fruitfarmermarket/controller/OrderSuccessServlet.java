@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 
+// đặt hàng thành công
 @WebServlet("/order-success")
 public class OrderSuccessServlet extends HttpServlet {
 

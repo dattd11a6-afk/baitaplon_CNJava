@@ -30,6 +30,9 @@
         .sidebar-menu li a i { font-size: 18px; margin-right: 12px; }
         .sidebar-menu li a:hover, .sidebar-menu li.active a { color: #fff; background-color: var(--sidebar-hover); border-left-color: var(--primary); }
 
+        .logout-btn { display: flex; align-items: center; padding: 12px 20px; color: #E5E7EB; background: rgba(255,255,255,0.05); text-decoration: none; border-radius: 6px; margin: 0 16px; transition: all 0.2s ease-in-out; font-weight: 500;}
+        .logout-btn:hover { background-color: #DC2626 !important; color: #FFFFFF !important; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.35); }
+
         /* TOPBAR & MAIN */
         .topbar { height: 64px; background: var(--surface); border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; padding: 0 32px; }
         .main-content { height: calc(100vh - 64px); overflow-y: auto; padding: 32px; }
@@ -51,40 +54,35 @@
 <body>
 
 <div class="d-flex">
-    <!-- SIDEBAR -->
+    <!-- SIDEBAR CHUẨN MỚI -->
     <aside class="sidebar">
-        <div class="sidebar-header">
+        <div class="p-4 d-flex align-items-center gap-2 border-bottom" style="border-color: rgba(255,255,255,0.05) !important;">
             <i class="ph-fill ph-storefront text-success fs-3"></i>
             <div>
                 <div class="fw-bold fs-6 brand-font">Fruit Farmer</div>
                 <div style="font-size: 10px; color:#8E9992; letter-spacing: 1px;">STAFF PANEL</div>
             </div>
         </div>
-        <ul class="sidebar-menu">
+        <ul class="sidebar-menu mt-3">
             <li class="active"><a href="${pageContext.request.contextPath}/staff/dashboard"><i class="ph ph-house"></i> Trang chủ</a></li>
-
             <div class="nav-group-label">Bán hàng</div>
             <li><a href="${pageContext.request.contextPath}/staff/pos"><i class="ph ph-monitor"></i> Đơn tại quầy (POS)</a></li>
             <li><a href="${pageContext.request.contextPath}/staff/orders"><i class="ph ph-receipt"></i> Quản lý đơn hàng</a></li>
-
             <div class="nav-group-label">Kho & Khách hàng</div>
             <li><a href="${pageContext.request.contextPath}/staff/inventory"><i class="ph ph-package"></i> Xem tồn kho</a></li>
             <li><a href="${pageContext.request.contextPath}/staff/customers"><i class="ph ph-users"></i> Tìm khách hàng</a></li>
-
             <div class="nav-group-label">Nhân sự</div>
             <li><a href="${pageContext.request.contextPath}/staff/attendance"><i class="ph ph-clock"></i> Ca làm & Chấm công</a></li>
         </ul>
-        <div class="mt-auto p-3 border-top" style="border-color: rgba(255,255,255,0.05)!important;">
-            <a href="${pageContext.request.contextPath}/logout" class="d-flex align-items-center text-muted text-decoration-none fw-medium"><i class="ph ph-sign-out me-2 fs-5"></i> Đăng xuất</a>
+        <div class="mt-auto pb-4 border-top pt-4" style="border-color: rgba(255,255,255,0.05)!important;">
+            <a href="${pageContext.request.contextPath}/logout" class="logout-btn"><i class="ph ph-sign-out fs-5 me-2"></i> Đăng xuất</a>
         </div>
     </aside>
 
-    <!-- MAIN -->
     <main class="flex-grow-1 overflow-hidden d-flex flex-column">
-        <header class="topbar">
-            <div class="fw-medium text-dark"><i class="ph ph-clock me-2"></i>Hôm nay: <fmt:formatDate value="<%=new java.util.Date()%>" pattern="dd/MM/yyyy"/></div>
+        <header class="topbar border-0 mb-2">
+            <div class="fw-medium text-dark"><i class="ph ph-clock me-2 text-primary"></i>Hôm nay: <fmt:formatDate value="<%=new java.util.Date()%>" pattern="dd/MM/yyyy"/></div>
             <div class="d-flex align-items-center gap-3">
-                <!-- NÚT TẠO ĐƠN TẠI QUẦY ĐÃ GẮN LINK -->
                 <a href="${pageContext.request.contextPath}/staff/pos" class="btn-pos d-flex align-items-center text-decoration-none"><i class="ph ph-plus-circle fs-5 me-2"></i> Tạo đơn tại quầy</a>
                 <div class="d-flex align-items-center gap-2 ms-3 pl-3 border-start">
                     <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 35px; height: 35px; font-weight: bold;">
@@ -100,12 +98,10 @@
 
         <div class="main-content">
             <div class="row g-4">
-
                 <!-- CỘT TRÁI: HOẠT ĐỘNG CHÍNH -->
                 <div class="col-lg-8">
                     <h4 class="brand-font fw-bold mb-4">Cần xử lý hôm nay</h4>
 
-                    <!-- KPI Vận hành -->
                     <div class="row g-3 mb-4">
                         <div class="col-md-3">
                             <div class="op-card text-center border-warning">
@@ -133,7 +129,6 @@
                         </div>
                     </div>
 
-                    <!-- Bảng Đơn hàng chờ xử lý -->
                     <div class="op-card p-0 overflow-hidden">
                         <div class="p-3 border-bottom d-flex justify-content-between align-items-center bg-light">
                             <h6 class="m-0 fw-bold"><i class="ph-fill ph-warning-circle text-warning me-2"></i>Đơn hàng đang chờ xử lý</h6>
@@ -149,7 +144,6 @@
                                         <td class="fw-semibold text-dark"><fmt:formatNumber value="${o.totalAmount}" type="currency" currencySymbol="₫" maxFractionDigits="0"/></td>
                                         <td><span class="badge-status ${o.orderStatus == 'PENDING' ? 'bg-pending' : 'bg-light text-dark border'}">${o.orderStatus}</span></td>
                                         <td class="text-end">
-                                            <!-- NÚT XỬ LÝ ĐÃ GẮN LINK -->
                                             <a href="${pageContext.request.contextPath}/staff/order-detail?id=${o.id}" class="btn btn-sm btn-dark px-3" style="border-radius: 6px;">Xử lý ngay</a>
                                         </td>
                                     </tr>
@@ -161,7 +155,6 @@
 
                 <!-- CỘT PHẢI: CA LÀM VIỆC & CẢNH BÁO -->
                 <div class="col-lg-4">
-                    <!-- Widget Chấm công -->
                     <div class="op-card mb-4" style="background: linear-gradient(145deg, #17231A 0%, #245530 100%); border: none;">
                         <h6 class="text-white-50 mb-3 fw-medium">CA LÀM VIỆC HÔM NAY</h6>
                         <div class="d-flex align-items-center gap-3 mb-4">
@@ -174,13 +167,11 @@
                                 <div class="text-white-50"><i class="ph ph-clock me-1"></i> 07:00 - 12:00</div>
                             </div>
                         </div>
-                        <!-- NÚT CHẤM CÔNG ĐÃ GẮN LINK SANG TRANG ĐIỂM DANH -->
                         <a href="${pageContext.request.contextPath}/staff/attendance" class="btn-checkin d-flex align-items-center justify-content-center gap-2 text-decoration-none">
                             <i class="ph-bold ph-fingerprint fs-5"></i> BẤM ĐỂ ĐIỂM DANH
                         </a>
                     </div>
 
-                    <!-- Cảnh báo tồn kho -->
                     <div class="op-card">
                         <h6 class="fw-bold mb-3 text-danger"><i class="ph-fill ph-warning me-2"></i>Sản phẩm sắp hết</h6>
                         <div class="d-flex flex-column gap-3">
@@ -199,7 +190,6 @@
                         </div>
                     </div>
                 </div>
-
             </div>
         </div>
     </main>
