@@ -11,21 +11,26 @@
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { --primary: #2F6B3F; --bg-admin: #F9FAFB; --surface: #FFFFFF; --sidebar-bg: #111827; --sidebar-hover: rgba(255,255,255,0.08); --border-color: #EAEAEC; --text-main: #1F2937; --text-muted: #6B7280; }
+        :root { --primary: #2F6B3F; --bg-admin: #F9FAFB; --surface: #FFFFFF; --text-main: #1F2937; --text-muted: #6B7280; --border-color: #EAEAEC; }
         body { background-color: var(--bg-admin); font-family: 'Inter', sans-serif; font-size: 14px; color: var(--text-main); }
         .brand-font { font-family: 'DM Sans', sans-serif; }
-        .sidebar { width: 260px; background-color: var(--sidebar-bg); color: #fff; height: 100vh; flex-shrink: 0; display: flex; flex-direction: column; }
+        .sidebar { width: 260px; background-color: #111827; color: #fff; height: 100vh; flex-shrink: 0; display: flex; flex-direction: column; }
         .sidebar-menu { list-style: none; padding: 0; margin: 0; }
-        .sidebar-menu li a { display: flex; align-items: center; padding: 12px 24px; color: #9CA3AF; text-decoration: none; font-weight: 500; transition: 0.2s; border-left: 3px solid transparent; }
-        .sidebar-menu li a i { font-size: 20px; margin-right: 14px; }
-        .sidebar-menu li a:hover, .sidebar-menu li.active a { color: #fff; background-color: var(--sidebar-hover); border-left-color: var(--primary); }
-        .topbar { height: 70px; background: var(--surface); border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; padding: 0 40px; }
+        .menu-label { padding: 24px 24px 8px; font-size: 11px; font-weight: 700; color: #6B7280; text-transform: uppercase; letter-spacing: 1px; }
+        .sidebar-menu li a { display: flex; align-items: center; padding: 10px 24px; color: #9CA3AF; text-decoration: none; font-weight: 500; font-size: 14px; transition: all 0.2s ease; border-left: 3px solid transparent; }
+        .sidebar-menu li a i { font-size: 20px; margin-right: 12px; transition: 0.2s; }
+        .sidebar-menu li a:hover { color: #fff; background-color: rgba(255,255,255,0.03); }
+        .sidebar-menu li a:hover i { color: var(--primary); transform: scale(1.1); }
+        .sidebar-menu li.active a { color: #fff; background-color: rgba(47, 107, 63, 0.15); border-left-color: var(--primary); font-weight: 600; }
+        .sidebar-menu li.active a i { color: var(--primary); }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+        .topbar { height: 70px; background: var(--surface); border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; padding: 0 40px; flex-shrink: 0; }
         .admin-card { background: var(--surface); border: 1px solid var(--border-color); border-radius: 8px; padding: 24px; box-shadow: none; height: 100%; }
         .kpi-title { font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; margin-bottom: 8px; }
         .btn-action { border-radius: 6px; font-weight: 500; font-size: 13px; padding: 8px 16px; border: 1px solid var(--border-color); background: var(--surface); color: var(--text-main); transition: 0.2s; text-decoration: none; display: inline-flex; align-items: center; gap: 8px;}
         .btn-action:hover { background: #F3F4F6; color: var(--text-main); }
-        .logout-btn { display: flex; align-items: center; padding: 12px 20px; color: #E5E7EB; background: rgba(255,255,255,0.05); text-decoration: none; border-radius: 6px; margin: 0 10px; transition: 0.2s;}
-        .logout-btn:hover { background-color: #DC2626; color: #fff; }
         @media print {
             body { background-color: #fff; }
             .sidebar, .topbar, .btn-action, .toast-container { display: none !important; }
@@ -38,25 +43,55 @@
 <body>
 <div class="d-flex">
     <aside class="sidebar">
-        <div class="p-4 d-flex align-items-center gap-3 border-bottom" style="border-color: rgba(255,255,255,0.05) !important;">
-            <i class="ph-fill ph-leaf fs-3" style="color: var(--primary);"></i>
-            <!-- DÒNG MỚI TỐI GIẢN -->
-            <div class="fw-bold fs-5 brand-font text-white">Fruit Farmer</div>
-        </div>
-        <ul class="sidebar-menu mt-4">
-            <li><a href="${pageContext.request.contextPath}/admin/dashboard"><i class="ph ph-squares-four"></i> Tổng quan</a></li>
-            <li><a href="${pageContext.request.contextPath}/admin/orders"><i class="ph ph-receipt"></i> Đơn hàng</a></li>
-            <li><a href="${pageContext.request.contextPath}/admin/products"><i class="ph ph-package"></i> Sản phẩm</a></li>
-            <li><a href="${pageContext.request.contextPath}/admin/categories"><i class="ph ph-tag"></i> Danh mục</a></li>
-            <li><a href="${pageContext.request.contextPath}/admin/vouchers"><i class="ph ph-ticket"></i> Khuyến mãi</a></li>
-            <li><a href="${pageContext.request.contextPath}/admin/customers"><i class="ph ph-users"></i> Khách hàng</a></li>
-            <li><a href="${pageContext.request.contextPath}/admin/staff"><i class="ph ph-identification-badge"></i> Nhân viên</a></li>
-            <li class="active"><a href="${pageContext.request.contextPath}/admin/reports"><i class="ph ph-chart-line-up"></i> Báo cáo</a></li>
-        </ul>
-        <div class="mt-auto p-3 border-top" style="border-color: rgba(255,255,255,0.05)!important;"><a href="${pageContext.request.contextPath}/logout" class="logout-btn"><i class="ph ph-sign-out fs-5 me-2"></i> Đăng xuất</a></div>
-    </aside>
+                <div class="p-4 d-flex align-items-center gap-3 border-bottom" style="border-color: rgba(255,255,255,0.05) !important;">
+                    <div class="d-flex align-items-center justify-content-center rounded" style="width: 36px; height: 36px; background: linear-gradient(135deg, var(--primary), #10B981);">
+                        <i class="ph-bold ph-leaf text-white fs-5"></i>
+                    </div>
+                    <div>
+                        <div class="fw-bold fs-5 brand-font text-white" style="letter-spacing: 0.5px;">Fruit Farmer</div>
+                        <div style="font-size: 10px; color: #10B981; font-weight: 600; letter-spacing: 1px;">ADMIN WORKSPACE</div>
+                    </div>
+                </div>
 
-    <main class="flex-grow-1 overflow-auto main-content" style="height: 100vh;">
+                <div class="overflow-auto flex-grow-1 pb-4 custom-scrollbar">
+                    <ul class="sidebar-menu">
+                        <div class="menu-label mt-2">Phân tích</div>
+                        <li class="${pageContext.request.servletPath == '/view/admin/dashboard.jsp' ? 'active' : ''}"><a href="${pageContext.request.contextPath}/admin/dashboard"><i class="ph-fill ph-squares-four"></i> Tổng quan</a></li>
+                        <li class="${pageContext.request.servletPath == '/view/admin/reports.jsp' ? 'active' : ''}"><a href="${pageContext.request.contextPath}/admin/reports"><i class="ph-fill ph-chart-line-up"></i> Báo cáo kinh doanh</a></li>
+
+                        <div class="menu-label">Bán hàng</div>
+                        <li class="${pageContext.request.servletPath == '/view/admin/orders.jsp' ? 'active' : ''}"><a href="${pageContext.request.contextPath}/admin/orders"><i class="ph-fill ph-receipt"></i> Đơn hàng</a></li>
+                        <li class="${pageContext.request.servletPath == '/view/admin/customers.jsp' ? 'active' : ''}"><a href="${pageContext.request.contextPath}/admin/customers"><i class="ph-fill ph-users"></i> Khách hàng</a></li>
+                        <li class="${pageContext.request.servletPath == '/view/admin/vouchers.jsp' ? 'active' : ''}"><a href="${pageContext.request.contextPath}/admin/vouchers"><i class="ph-fill ph-ticket"></i> Khuyến mãi</a></li>
+
+                        <!-- LUÔN GIỮ ĐÁNH GIÁ Ở ĐÂY -->
+                        <li class="${pageContext.request.servletPath == '/view/admin/reviews.jsp' ? 'active' : ''}"><a href="${pageContext.request.contextPath}/admin/reviews"><i class="ph-fill ph-star"></i> Đánh giá</a></li>
+
+                        <div class="menu-label">Kho & Hàng hóa</div>
+                        <li class="${pageContext.request.servletPath == '/view/admin/products.jsp' ? 'active' : ''}"><a href="${pageContext.request.contextPath}/admin/products"><i class="ph-fill ph-package"></i> Danh sách Sản phẩm</a></li>
+                        <li class="${pageContext.request.servletPath == '/view/admin/categories.jsp' ? 'active' : ''}"><a href="${pageContext.request.contextPath}/admin/categories"><i class="ph-fill ph-tag"></i> Danh mục</a></li>
+
+                        <!-- LUÔN GIỮ PHỤ KIỆN TẠI ĐÂY -->
+                        <li class="${pageContext.request.servletPath == '/view/admin/admin-accessories.jsp' ? 'active' : ''}"><a href="${pageContext.request.contextPath}/admin/accessories"><i class="ph-fill ph-magic-wand"></i> Phụ kiện Mix Giỏ</a></li>
+
+                        <li class="${pageContext.request.servletPath == '/view/admin/inventory.jsp' ? 'active' : ''}"><a href="${pageContext.request.contextPath}/admin/inventory"><i class="ph-fill ph-box-arrow-down"></i> Lập phiếu Nhập kho</a></li>
+                        <li class="${pageContext.request.servletPath == '/view/admin/suppliers.jsp' ? 'active' : ''}"><a href="${pageContext.request.contextPath}/admin/suppliers"><i class="ph-fill ph-truck"></i> Nhà cung cấp</a></li>
+
+                        <div class="menu-label">Cấu hình</div>
+                        <li class="${pageContext.request.servletPath == '/view/admin/staff.jsp' ? 'active' : ''}"><a href="${pageContext.request.contextPath}/admin/staff"><i class="ph-fill ph-identification-badge"></i> Nhân viên</a></li>
+                        <li><a href="${pageContext.request.contextPath}/shipper" target="_blank"><i class="ph-fill ph-motorcycle"></i> Giao diện Shipper</a></li>
+
+                    </ul>
+                </div>
+
+                <div class="p-4 border-top" style="border-color: rgba(255,255,255,0.05)!important;">
+                    <a href="${pageContext.request.contextPath}/logout" class="d-flex align-items-center justify-content-center py-2 px-3 text-decoration-none rounded" style="background: rgba(239, 68, 68, 0.1); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.2); transition: 0.2s;">
+                        <i class="ph-bold ph-sign-out fs-5 me-2"></i> Đăng xuất
+                    </a>
+                </div>
+            </aside>
+
+    <main class="flex-grow-1 d-flex flex-column main-content" style="height: 100vh; overflow-y: auto;">
         <header class="topbar"></header>
 
         <div class="p-4 px-5">
@@ -132,53 +167,25 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    // NHẬN DỮ LIỆU THẬT 100% TỪ BACKEND TRUYỀN XUỐNG
     const revLabels = [ <c:forEach items="${rev7Days}" var="entry">"${entry.key}",</c:forEach> ];
     const revData = [ <c:forEach items="${rev7Days}" var="entry">${entry.value},</c:forEach> ];
     const statusLabels = [ <c:forEach items="${statusDist}" var="entry">"${entry.key}",</c:forEach> ];
     const statusData = [ <c:forEach items="${statusDist}" var="entry">${entry.value},</c:forEach> ];
 
-    // FIX LỖI CỘT QUE CỦI (Sử dụng barPercentage để giới hạn tỷ lệ chiếm chỗ của cột)
     new Chart(document.getElementById('revenueChart').getContext('2d'), {
         type: 'bar',
         data: {
             labels: revLabels,
-            datasets: [{
-                label: 'Doanh thu (VNĐ)',
-                data: revData,
-                backgroundColor: '#2F6B3F',
-                borderRadius: 4,
-                barPercentage: 0.4,       // Cột chỉ chiếm tối đa 40% khoảng trống
-                maxBarThickness: 50       // Chống việc 1 cột phóng to khổng lồ
-            }]
+            datasets: [{ label: 'Doanh thu (VNĐ)', data: revData, backgroundColor: '#2F6B3F', borderRadius: 4, barPercentage: 0.4, maxBarThickness: 50 }]
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                x: { grid: { display: false } },
-                y: { beginAtZero: true, border: { dash: [4, 4] } }
-            },
-            plugins: { legend: { display: false } }
-        }
+        options: { responsive: true, maintainAspectRatio: false, scales: { x: { grid: { display: false } }, y: { beginAtZero: true, border: { dash: [4, 4] } } }, plugins: { legend: { display: false } } }
     });
 
-    // DONUT CHART LUXURY
     const bgColors = statusLabels.map(l => l==='COMPLETED' ? '#10B981' : (l==='PENDING' ? '#F59E0B' : (l==='CANCELLED' ? '#EF4444' : '#3B82F6')));
     new Chart(document.getElementById('statusChart').getContext('2d'), {
         type: 'doughnut',
-        data: {
-            labels: statusLabels,
-            datasets: [{ data: statusData, backgroundColor: bgColors, borderWidth: 0, hoverOffset: 4 }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            cutout: '70%',
-            plugins: {
-                legend: { position: 'bottom', labels: { usePointStyle: true, padding: 15, font: { size: 11 } } }
-            }
-        }
+        data: { labels: statusLabels, datasets: [{ data: statusData, backgroundColor: bgColors, borderWidth: 0, hoverOffset: 4 }] },
+        options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 15, font: { size: 11 } } } } }
     });
 </script>
 </body>

@@ -54,6 +54,11 @@ public class OrderServlet extends HttpServlet {
 
                 if (order != null) {
                     List<OrderDetail> details = orderDAO.getOrderDetailsByOrderId(orderId);
+                    // THÊM DÒNG NÀY: Lấy lịch sử tiến độ
+                    request.setAttribute("historyList", orderDAO.getOrderHistory(orderId));
+
+                    request.setAttribute("order", order);
+                    request.setAttribute("details", details);
                     request.setAttribute("order", order);
                     request.setAttribute("details", details);
                     request.getRequestDispatcher("/view/user/order-detail.jsp").forward(request, response);

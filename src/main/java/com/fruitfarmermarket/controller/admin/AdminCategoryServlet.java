@@ -15,7 +15,7 @@ public class AdminCategoryServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        // Chỉ load danh sách, Add/Edit sẽ dùng Popup (Modal)
+        // Chỉ load danh sách
         List<Category> categories = categoryDAO.getAllCategoriesForAdmin();
         request.setAttribute("categories", categories);
         request.getRequestDispatcher("/view/admin/categories.jsp").forward(request, response);

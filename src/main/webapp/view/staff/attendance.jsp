@@ -44,7 +44,7 @@
         <ul class="sidebar-menu mt-3">
             <li><a href="${pageContext.request.contextPath}/staff/dashboard"><i class="ph ph-house"></i> Trang chủ</a></li>
             <div class="nav-group-label">Bán hàng</div>
-            <li><a href="${pageContext.request.contextPath}/staff/pos"><i class="ph ph-monitor"></i> Đơn tại quầy (POS)</a></li>
+            <li><a href="${pageContext.request.contextPath}/staff/pos"><i class="ph ph-monitor"></i> Đơn tại quầy</a></li>
             <li><a href="${pageContext.request.contextPath}/staff/orders"><i class="ph ph-receipt"></i> Quản lý đơn hàng</a></li>
             <div class="nav-group-label">Kho & Khách hàng</div>
             <li><a href="${pageContext.request.contextPath}/staff/inventory"><i class="ph ph-package"></i> Xem tồn kho</a></li>

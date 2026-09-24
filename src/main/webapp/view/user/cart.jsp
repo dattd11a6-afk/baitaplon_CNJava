@@ -19,8 +19,6 @@
         .qty-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         .hover-primary:hover { color: #2F6B3F !important; transition: 0.2s; }
         .navbar-brand { font-family: 'DM Sans', sans-serif; font-weight: 700; font-size: 24px; color: #2F6B3F !important; }
-
-        /* STYLE VOUCHER CHUẨN E-COMMERCE */
         .voucher-ticket { border: 1px solid #EAEAEC; background: #fff; border-radius: 8px; margin-bottom: 12px; display: flex; align-items: stretch; overflow: hidden; transition: 0.2s;}
         .voucher-ticket:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.05); border-color: #2F6B3F;}
         .voucher-icon-box { width: 80px; background: #2F6B3F; color: white; display: flex; align-items: center; justify-content: center; position: relative; border-right: 1px dashed #fff; }
@@ -28,7 +26,6 @@
 </head>
 <body class="bg-main">
 
-    <!-- NAVBAR MỚI ĐƯỢC NÂNG CẤP TÍCH HỢP TÀI KHOẢN & ĐƠN MUA -->
     <nav class="navbar navbar-expand-lg sticky-top border-bottom bg-white py-3">
         <div class="container d-flex justify-content-between align-items-center">
             <a class="navbar-brand text-success brand-font text-decoration-none" href="${pageContext.request.contextPath}/">
@@ -41,9 +38,7 @@
                 <a href="${pageContext.request.contextPath}/cart" class="text-decoration-none text-dark fw-medium d-flex align-items-center gap-1 hover-primary position-relative">
                     <i class="ph ph-shopping-cart fs-5"></i> Giỏ hàng
                     <c:if test="${not empty sessionScope.cart}">
-                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 10px;">
-                            ${sessionScope.cart.size()}
-                        </span>
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 10px;">${sessionScope.cart.size()}</span>
                     </c:if>
                 </a>
                 <c:choose>
@@ -70,10 +65,7 @@
         </div>
     </nav>
 
-    <!-- NỘI DUNG GIỎ HÀNG -->
     <div class="container py-5">
-
-
         <c:choose>
             <c:when test="${empty sessionScope.cart}">
                 <div class="text-center py-5 bg-white rounded-4 border border-light shadow-sm">
@@ -86,7 +78,6 @@
 
             <c:otherwise>
                 <div class="row g-4">
-                    <!-- CỘT TRÁI: Danh sách sản phẩm -->
                     <div class="col-lg-8">
                         <div class="bg-white rounded-4 border border-light p-4 shadow-sm">
                             <div class="table-responsive">
@@ -102,49 +93,108 @@
                                     </thead>
                                     <tbody style="border-top: 1px solid var(--border-light);">
                                         <c:forEach var="item" items="${sessionScope.cart}">
-                                            <tr>
-                                                <td>
-                                                    <div class="d-flex align-items-center gap-3">
-                                                        <c:choose>
-                                                            <c:when test="${not empty item.product.image && fn:startsWith(item.product.image, 'http')}">
-                                                                <img src="${item.product.image}" class="cart-item-img">
-                                                            </c:when>
-                                                            <c:when test="${not empty item.product.image}">
-                                                                <img src="${pageContext.request.contextPath}/assets/images/products/${item.product.image}" class="cart-item-img">
-                                                            </c:when>
-                                                            <c:otherwise>
-                                                                <img src="https://images.unsplash.com/photo-1610832958506-aa56368176cf?q=80&w=200&auto=format&fit=crop" class="cart-item-img">
-                                                            </c:otherwise>
-                                                        </c:choose>
-                                                        <div>
-                                                            <a href="${pageContext.request.contextPath}/product?id=${item.product.id}" class="text-dark fw-semibold text-decoration-none d-block">${item.product.name}</a>
-                                                            <span class="text-muted" style="font-size: 12px;">Kho: ${item.product.stock}</span>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td class="fw-medium text-dark"><fmt:formatNumber value="${item.product.price}" type="currency" currencySymbol="₫" maxFractionDigits="0"/></td>
-                                                <td>
-                                                    <form action="${pageContext.request.contextPath}/cart" method="POST" class="d-flex align-items-center gap-2">
-                                                        <input type="hidden" name="action" value="update">
-                                                        <input type="hidden" name="id" value="${item.product.id}">
-                                                        <input type="number" name="quantity" value="${item.quantity}" min="1" max="${item.product.stock}" class="qty-input" onchange="this.form.submit()">
-                                                    </form>
-                                                </td>
-                                                <td class="fw-bold text-success"><fmt:formatNumber value="${item.subtotal}" type="currency" currencySymbol="₫" maxFractionDigits="0"/></td>
-                                                <td>
-                                                    <form action="${pageContext.request.contextPath}/cart" method="POST" class="m-0">
-                                                        <input type="hidden" name="action" value="remove">
-                                                        <input type="hidden" name="id" value="${item.product.id}">
-                                                        <button type="submit" class="btn text-danger p-0" title="Xóa"><i class="fa-regular fa-trash-can"></i></button>
-                                                    </form>
-                                                </td>
-                                            </tr>
+                                            <c:choose>
+                                                <%-- TRƯỜNG HỢP 1: LÀ GIỎ QUÀ MIX (Sử dụng cách kiểm tra an toàn theo Class) --%>
+                                                <c:when test="${not empty item.basketSessionId}">
+                                                    <tr>
+                                                        <td>
+                                                            <div class="d-flex align-items-center gap-3">
+                                                                <div class="cart-item-img d-flex align-items-center justify-content-center bg-success-subtle text-success border border-success-subtle rounded-3" style="font-size: 32px;">🎁</div>
+                                                                <div>
+                                                                    <div class="text-dark fw-bold" style="font-size: 15px;">Giỏ Quà Mix Theo Yêu Cầu</div>
+                                                                    <span class="badge bg-light text-secondary border mt-1 mb-1">Mã: ${item.basketSessionId}</span>
+                                                                    <div>
+                                                                        <button class="btn btn-sm btn-link text-success fw-medium p-0 text-decoration-none" type="button" data-bs-toggle="collapse" data-bs-target="#collapseBasket_${item.basketSessionId}">
+                                                                            Xem chi tiết bên trong <i class="ph-bold ph-caret-down"></i>
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td class="fw-medium text-dark"><fmt:formatNumber value="${item.subtotal}" type="currency" currencySymbol="₫" maxFractionDigits="0"/></td>
+                                                        <td class="text-center"><span class="fw-bold bg-light border px-3 py-1 rounded">1</span></td>
+                                                        <td class="fw-bold text-success"><fmt:formatNumber value="${item.subtotal}" type="currency" currencySymbol="₫" maxFractionDigits="0"/></td>
+                                                        <td>
+                                                            <form action="${pageContext.request.contextPath}/cart" method="POST" class="m-0">
+                                                                <input type="hidden" name="action" value="remove_basket">
+                                                                <input type="hidden" name="basketSessionId" value="${item.basketSessionId}">
+                                                                <button type="submit" class="btn text-danger p-0" title="Xóa"><i class="fa-regular fa-trash-can"></i></button>
+                                                            </form>
+                                                        </td>
+                                                    </tr>
+                                                    <!-- COLLAPSE CHI TIẾT GIỎ QUÀ -->
+                                                    <tr class="collapse" id="collapseBasket_${item.basketSessionId}">
+                                                        <td colspan="5" class="p-0 border-0 bg-light">
+                                                            <div class="p-4 mx-2 my-2 bg-white rounded-3 border border-success-subtle shadow-sm">
+                                                                <div class="row g-4">
+                                                                    <div class="col-md-6 border-end">
+                                                                        <h6 class="fw-bold text-dark mb-3"><i class="ph-fill ph-apple-logo text-danger me-2"></i>Trái cây đã chọn:</h6>
+                                                                        <ul class="list-unstyled mb-0">
+                                                                            <c:forEach var="fruit" items="${item.fruitItems}">
+                                                                                <li class="d-flex justify-content-between text-muted mb-2 pb-2 border-bottom border-light" style="font-size: 13px;">
+                                                                                    <span>- ${fruit.product.name} <strong class="text-dark">(x${fruit.quantity})</strong></span>
+                                                                                    <span class="fw-medium text-dark"><fmt:formatNumber value="${fruit.subtotal}" type="currency" currencySymbol="₫" maxFractionDigits="0"/></span>
+                                                                                </li>
+                                                                            </c:forEach>
+                                                                        </ul>
+                                                                    </div>
+                                                                    <div class="col-md-6">
+                                                                        <h6 class="fw-bold text-dark mb-3"><i class="ph-fill ph-gift text-primary me-2"></i>Chi tiết đóng gói:</h6>
+                                                                        <ul class="list-unstyled mb-3">
+                                                                            <li class="d-flex justify-content-between text-muted mb-2" style="font-size: 13px;"><span><i class="ph-light ph-basket me-1"></i> Vỏ giỏ: ${item.basket.name}</span><span class="fw-medium"><fmt:formatNumber value="${item.basket.price}" type="currency" currencySymbol="₫" maxFractionDigits="0"/></span></li>
+                                                                            <li class="d-flex justify-content-between text-muted mb-2" style="font-size: 13px;"><span><i class="ph-light ph-sparkle me-1"></i> Trang trí: ${item.decoration.name}</span><span class="fw-medium"><fmt:formatNumber value="${item.decoration.price}" type="currency" currencySymbol="₫" maxFractionDigits="0"/></span></li>
+                                                                            <li class="d-flex justify-content-between text-muted mb-2" style="font-size: 13px;"><span><i class="ph-light ph-package me-1"></i> Bọc gói: ${item.packaging.name}</span><span class="fw-medium"><fmt:formatNumber value="${item.packaging.price}" type="currency" currencySymbol="₫" maxFractionDigits="0"/></span></li>
+                                                                        </ul>
+                                                                        <c:if test="${not empty item.cardMessage}">
+                                                                            <div class="p-2 rounded bg-warning-subtle text-dark fst-italic" style="font-size: 13px; border-left: 3px solid #ffc107;"><i class="ph-fill ph-quotes text-warning me-1"></i> ${item.cardMessage}</div>
+                                                                        </c:if>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                </c:when>
+
+                                                <%-- TRƯỜNG HỢP 2: LÀ SẢN PHẨM MUA LẺ BÌNH THƯỜNG --%>
+                                                <c:otherwise>
+                                                    <tr>
+                                                        <td>
+                                                            <div class="d-flex align-items-center gap-3">
+                                                                <c:choose>
+                                                                    <c:when test="${not empty item.product.image && fn:startsWith(item.product.image, 'http')}"><img src="${item.product.image}" class="cart-item-img"></c:when>
+                                                                    <c:when test="${not empty item.product.image}"><img src="${pageContext.request.contextPath}/assets/images/products/${item.product.image}" class="cart-item-img"></c:when>
+                                                                    <c:otherwise><img src="https://images.unsplash.com/photo-1610832958506-aa56368176cf?q=80&w=200&auto=format&fit=crop" class="cart-item-img"></c:otherwise>
+                                                                </c:choose>
+                                                                <div>
+                                                                    <a href="${pageContext.request.contextPath}/product?id=${item.product.id}" class="text-dark fw-semibold text-decoration-none d-block">${item.product.name}</a>
+                                                                    <span class="text-muted" style="font-size: 12px;">Kho: ${item.product.stock}</span>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td class="fw-medium text-dark"><fmt:formatNumber value="${item.product.price}" type="currency" currencySymbol="₫" maxFractionDigits="0"/></td>
+                                                        <td>
+                                                            <form action="${pageContext.request.contextPath}/cart" method="POST" class="d-flex align-items-center gap-2">
+                                                                <input type="hidden" name="action" value="update">
+                                                                <input type="hidden" name="id" value="${item.product.id}">
+                                                                <input type="number" name="quantity" value="${item.quantity}" min="1" max="${item.product.stock}" class="qty-input" onchange="this.form.submit()">
+                                                            </form>
+                                                        </td>
+                                                        <td class="fw-bold text-success"><fmt:formatNumber value="${item.subtotal}" type="currency" currencySymbol="₫" maxFractionDigits="0"/></td>
+                                                        <td>
+                                                            <form action="${pageContext.request.contextPath}/cart" method="POST" class="m-0">
+                                                                <input type="hidden" name="action" value="remove">
+                                                                <input type="hidden" name="id" value="${item.product.id}">
+                                                                <button type="submit" class="btn text-danger p-0" title="Xóa"><i class="fa-regular fa-trash-can"></i></button>
+                                                            </form>
+                                                        </td>
+                                                    </tr>
+                                                </c:otherwise>
+                                            </c:choose>
                                         </c:forEach>
                                     </tbody>
                                 </table>
                             </div>
                         </div>
-                        <!-- tiếp tục mua trái cây kũ -->
                     </div>
 
                     <!-- CỘT PHẢI: Order Summary -->
@@ -152,12 +202,10 @@
                         <div class="bg-white rounded-4 border border-light p-4 shadow-sm position-sticky" style="top: 100px;">
                             <h5 class="brand-font mb-4">Tổng đơn hàng</h5>
 
-                            <!-- NÚT GỌI POPUP VOUCHER -->
                             <div class="mb-4">
                                 <label class="form-label text-muted fw-bold" style="font-size: 13px;"><i class="ph-fill ph-ticket text-warning fs-5 align-middle me-1"></i> Mã ưu đãi / Voucher</label>
                                 <c:choose>
                                     <c:when test="${not empty sessionScope.appliedVoucher}">
-                                        <!-- Khối đang áp dụng Voucher -->
                                         <div class="alert alert-success border-0 py-2 px-3 mb-0 d-flex justify-content-between align-items-center" style="font-size: 13px;">
                                             <span><i class="ph-fill ph-check-circle me-1"></i> <b>${sessionScope.appliedVoucher.code}</b></span>
                                             <form action="${pageContext.request.contextPath}/cart" method="POST" class="m-0">
@@ -167,45 +215,18 @@
                                         </div>
                                     </c:when>
                                     <c:otherwise>
-                                        <!-- Nút chọn mã -->
-                                        <div class="d-grid">
-                                            <button class="btn btn-outline-success fw-medium" data-bs-toggle="modal" data-bs-target="#voucherModal">
-                                                <i class="ph ph-magnifying-glass me-1"></i> Bấm để chọn Voucher
-                                            </button>
-                                        </div>
+                                        <div class="d-grid"><button class="btn btn-outline-success fw-medium" data-bs-toggle="modal" data-bs-target="#voucherModal"><i class="ph ph-magnifying-glass me-1"></i> Bấm để chọn Voucher</button></div>
                                     </c:otherwise>
                                 </c:choose>
                             </div>
 
-                            <div class="d-flex justify-content-between mb-3 text-muted" style="font-size: 15px;">
-                                <span>Tạm tính</span>
-                                <span class="fw-medium text-dark"><fmt:formatNumber value="${cartTotal}" type="currency" currencySymbol="₫" maxFractionDigits="0"/></span>
-                            </div>
-                            <div class="d-flex justify-content-between mb-3 text-muted" style="font-size: 15px;">
-                                <span>Phí giao hàng</span>
-                                <span class="text-dark">---</span>
-                            </div>
+                            <div class="d-flex justify-content-between mb-3 text-muted" style="font-size: 15px;"><span>Tạm tính</span><span class="fw-medium text-dark"><fmt:formatNumber value="${cartTotal}" type="currency" currencySymbol="₫" maxFractionDigits="0"/></span></div>
+                            <div class="d-flex justify-content-between mb-3 text-muted" style="font-size: 15px;"><span>Phí giao hàng</span><span class="text-dark">---</span></div>
+                            <div class="d-flex justify-content-between mb-4 ${not empty sessionScope.discountAmount ? 'text-success fw-bold' : 'text-muted'}" style="font-size: 15px;"><span>Giảm giá</span><span><c:if test="${not empty sessionScope.discountAmount}">- </c:if><fmt:formatNumber value="${not empty sessionScope.discountAmount ? sessionScope.discountAmount : 0}" type="currency" currencySymbol="₫" maxFractionDigits="0"/></span></div>
 
-                            <!-- Trừ tiền Voucher -->
-                            <div class="d-flex justify-content-between mb-4 ${not empty sessionScope.discountAmount ? 'text-success fw-bold' : 'text-muted'}" style="font-size: 15px;">
-                                <span>Giảm giá</span>
-                                <span><c:if test="${not empty sessionScope.discountAmount}">- </c:if><fmt:formatNumber value="${not empty sessionScope.discountAmount ? sessionScope.discountAmount : 0}" type="currency" currencySymbol="₫" maxFractionDigits="0"/></span>
-                            </div>
-
-                            <div class="d-flex justify-content-between align-items-center mb-4 pt-3 border-top">
-                                <span class="fw-bold" style="font-size: 16px;">Tổng thanh toán</span>
-                                <span class="fw-bold text-success fs-4">
-                                    <fmt:formatNumber value="${cartTotal - (not empty sessionScope.discountAmount ? sessionScope.discountAmount : 0)}" type="currency" currencySymbol="₫" maxFractionDigits="0"/>
-                                </span>
-                            </div>
-
-                            <a href="${pageContext.request.contextPath}/checkout" class="btn btn-primary-custom w-100 py-3" style="font-size: 16px;">
-                                Tiến hành thanh toán
-                            </a>
-                            <!-- tiếp tục mua trái cây giờ đc chuyển xuống đây cho đẹp -->
-                            <a href="${pageContext.request.contextPath}/products" class="d-block text-center mt-3 text-muted text-decoration-none" style="font-size: 14px;">
-                                Mua thêm trái cây khác
-                            </a>
+                            <div class="d-flex justify-content-between align-items-center mb-4 pt-3 border-top"><span class="fw-bold" style="font-size: 16px;">Tổng thanh toán</span><span class="fw-bold text-success fs-4"><fmt:formatNumber value="${cartTotal - (not empty sessionScope.discountAmount ? sessionScope.discountAmount : 0)}" type="currency" currencySymbol="₫" maxFractionDigits="0"/></span></div>
+                            <a href="${pageContext.request.contextPath}/checkout" class="btn btn-primary-custom w-100 py-3" style="font-size: 16px;">Tiến hành thanh toán</a>
+                            <a href="${pageContext.request.contextPath}/products" class="d-block text-center mt-3 text-muted text-decoration-none" style="font-size: 14px;">Mua thêm trái cây khác</a>
                         </div>
                     </div>
                 </div>
@@ -213,75 +234,36 @@
         </c:choose>
     </div>
 
-    <!-- ==================== MODAL CHỌN VOUCHER (SHOPEE STYLE) ==================== -->
+    <!-- MODAL VOUCHER -->
     <div class="modal fade" id="voucherModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content rounded-4 border-0 shadow">
-                <div class="modal-header border-bottom pb-3">
-                    <h5 class="modal-title fw-bold text-dark"><i class="ph-fill ph-ticket text-warning me-2"></i>Chọn Voucher khả dụng</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
+                <div class="modal-header border-bottom pb-3"><h5 class="modal-title fw-bold text-dark"><i class="ph-fill ph-ticket text-warning me-2"></i>Chọn Voucher khả dụng</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
                 <div class="modal-body bg-light p-3" style="max-height: 500px;">
-
-                    <!-- Nhập mã tay -->
-                    <form action="${pageContext.request.contextPath}/cart" method="POST" class="d-flex gap-2 mb-4">
-                        <input type="hidden" name="action" value="apply_voucher">
-                        <input type="text" name="voucherCode" class="form-control text-uppercase fw-bold border-success" placeholder="Hoặc nhập mã của bạn..." required>
-                        <button type="submit" class="btn btn-success fw-bold px-4">Áp dụng</button>
-                    </form>
-
-                    <!-- Danh sách đổ từ Database -->
+                    <form action="${pageContext.request.contextPath}/cart" method="POST" class="d-flex gap-2 mb-4"><input type="hidden" name="action" value="apply_voucher"><input type="text" name="voucherCode" class="form-control text-uppercase fw-bold border-success" placeholder="Hoặc nhập mã của bạn..." required><button type="submit" class="btn btn-success fw-bold px-4">Áp dụng</button></form>
                     <c:choose>
-                        <c:when test="${empty availableVouchers}">
-                            <div class="text-center text-muted py-4">Hiện không có mã giảm giá nào.</div>
-                        </c:when>
+                        <c:when test="${empty availableVouchers}"><div class="text-center text-muted py-4">Hiện không có mã giảm giá nào.</div></c:when>
                         <c:otherwise>
                             <c:forEach var="v" items="${availableVouchers}">
                                 <c:if test="${v.status == 'ACTIVE'}">
-
-                                    <!-- Tính toán thanh tiến độ phần trăm % -->
                                     <c:set var="totalLimit" value="${v.usageLimit + v.usedCount}" />
                                     <c:set var="percentUsed" value="${totalLimit > 0 ? (v.usedCount / totalLimit) * 100 : 0}" />
-
                                     <div class="voucher-ticket shadow-sm">
-                                        <!-- Cột Icon -->
-                                        <div class="voucher-icon-box">
-                                            <i class="ph-fill ph-ticket fs-1"></i>
-                                        </div>
-
-                                        <!-- Cột Thông tin -->
+                                        <div class="voucher-icon-box"><i class="ph-fill ph-ticket fs-1"></i></div>
                                         <div class="p-3 flex-grow-1 bg-white" style="border-radius: 0 8px 8px 0;">
                                             <div class="d-flex justify-content-between align-items-start mb-1">
                                                 <div>
                                                     <div class="fw-bold text-success fs-6">${v.code}</div>
-                                                    <div class="text-muted" style="font-size: 12px;">
-                                                        <c:choose>
-                                                            <c:when test="${v.type == 'PERCENT'}">Giảm <fmt:formatNumber value="${v.discountValue}" maxFractionDigits="0"/>%</c:when>
-                                                            <c:otherwise>Giảm <fmt:formatNumber value="${v.discountValue}" type="currency" currencySymbol="₫" maxFractionDigits="0"/></c:otherwise>
-                                                        </c:choose>
-                                                        cho đơn từ <fmt:formatNumber value="${v.minOrderAmount}" type="currency" currencySymbol="₫" maxFractionDigits="0"/>
-                                                    </div>
+                                                    <div class="text-muted" style="font-size: 12px;"><c:choose><c:when test="${v.type == 'PERCENT'}">Giảm <fmt:formatNumber value="${v.discountValue}" maxFractionDigits="0"/>%</c:when><c:otherwise>Giảm <fmt:formatNumber value="${v.discountValue}" type="currency" currencySymbol="₫" maxFractionDigits="0"/></c:otherwise></c:choose> cho đơn từ <fmt:formatNumber value="${v.minOrderAmount}" type="currency" currencySymbol="₫" maxFractionDigits="0"/></div>
                                                 </div>
                                             </div>
-
                                             <div class="d-flex justify-content-between align-items-end mt-2">
-                                                <!-- Cảnh báo % Đã dùng và Hạn Sử dụng -->
                                                 <div style="width: 55%;">
-                                                    <div class="progress mb-1" style="height: 4px; background-color: #EAEAEC;">
-                                                        <div class="progress-bar bg-danger" style="width: ${percentUsed}%"></div>
-                                                    </div>
+                                                    <div class="progress mb-1" style="height: 4px; background-color: #EAEAEC;"><div class="progress-bar bg-danger" style="width: ${percentUsed}%"></div></div>
                                                     <div class="text-danger fw-medium" style="font-size: 10px;">Đã dùng <fmt:formatNumber value="${percentUsed}" maxFractionDigits="0"/>%</div>
                                                     <div class="text-muted mt-1" style="font-size: 10px;"><i class="ph ph-clock"></i> HSD: <fmt:formatDate value="${v.expiryDate}" pattern="dd/MM/yyyy"/></div>
                                                 </div>
-
-                                                <!-- Nút Dùng Ngay -->
-                                                <form action="${pageContext.request.contextPath}/cart" method="POST" class="m-0">
-                                                    <input type="hidden" name="action" value="apply_voucher">
-                                                    <input type="hidden" name="voucherCode" value="${v.code}">
-                                                    <button type="submit" class="btn btn-sm btn-success fw-bold px-3" style="font-size: 12px;" ${v.usageLimit <= 0 ? 'disabled' : ''}>
-                                                        ${v.usageLimit <= 0 ? 'HẾT LƯỢT' : 'DÙNG NGAY'}
-                                                    </button>
-                                                </form>
+                                                <form action="${pageContext.request.contextPath}/cart" method="POST" class="m-0"><input type="hidden" name="action" value="apply_voucher"><input type="hidden" name="voucherCode" value="${v.code}"><button type="submit" class="btn btn-sm btn-success fw-bold px-3" style="font-size: 12px;" ${v.usageLimit <= 0 ? 'disabled' : ''}>${v.usageLimit <= 0 ? 'HẾT LƯỢT' : 'DÙNG NGAY'}</button></form>
                                             </div>
                                         </div>
                                     </div>
@@ -296,39 +278,11 @@
 
     <!-- TOAST -->
     <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1100;">
-        <c:if test="${not empty sessionScope.successMsg}">
-            <div class="toast align-items-center text-bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
-                <div class="d-flex">
-                    <div class="toast-body" style="font-size: 14px; font-weight: 500;">
-                        <i class="fa-solid fa-circle-check me-2"></i> ${sessionScope.successMsg}
-                    </div>
-                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-                </div>
-            </div>
-            <c:remove var="successMsg" scope="session" />
-        </c:if>
-        <c:if test="${not empty sessionScope.errorMsg}">
-            <div class="toast align-items-center text-bg-danger border-0" role="alert" aria-live="assertive" aria-atomic="true">
-                <div class="d-flex">
-                    <div class="toast-body" style="font-size: 14px; font-weight: 500;">
-                        <i class="fa-solid fa-triangle-exclamation me-2"></i> ${sessionScope.errorMsg}
-                    </div>
-                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-                </div>
-            </div>
-            <c:remove var="errorMsg" scope="session" />
-        </c:if>
+        <c:if test="${not empty sessionScope.successMsg}"><div class="toast align-items-center text-bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true"><div class="d-flex"><div class="toast-body" style="font-size: 14px; font-weight: 500;"><i class="fa-solid fa-circle-check me-2"></i> ${sessionScope.successMsg}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div></div><c:remove var="successMsg" scope="session" /></c:if>
+        <c:if test="${not empty sessionScope.errorMsg}"><div class="toast align-items-center text-bg-danger border-0" role="alert" aria-live="assertive" aria-atomic="true"><div class="d-flex"><div class="toast-body" style="font-size: 14px; font-weight: 500;"><i class="fa-solid fa-triangle-exclamation me-2"></i> ${sessionScope.errorMsg}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div></div><c:remove var="errorMsg" scope="session" /></c:if>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            var toastElList = [].slice.call(document.querySelectorAll('.toast'));
-            var toastList = toastElList.map(function(toastEl) {
-                return new bootstrap.Toast(toastEl, { delay: 3000 });
-            });
-            toastList.forEach(toast => toast.show());
-        });
-    </script>
+    <script> document.addEventListener("DOMContentLoaded", function() { var ts = [].slice.call(document.querySelectorAll('.toast')); ts.map(function(t) { return new bootstrap.Toast(t, { delay: 3000 }); }).forEach(t => t.show()); }); </script>
 </body>
 </html>

@@ -7,7 +7,6 @@
     <groupId>com.fruitfarmermarket</groupId>
     <artifactId>FruitFarmerMarket</artifactId>
     <version>1.0-SNAPSHOT</version>
-    <!-- Bắt buộc phải là war để chạy web -->
     <packaging>war</packaging>
 
     <properties>
@@ -43,6 +42,13 @@
             <groupId>com.mysql</groupId>
             <artifactId>mysql-connector-j</artifactId>
             <version>8.2.0</version>
+        </dependency>
+
+        <!-- [THÊM MỚI]: Thư viện gửi Email OTP chuẩn Jakarta -->
+        <dependency>
+            <groupId>org.eclipse.angus</groupId>
+            <artifactId>jakarta.mail</artifactId>
+            <version>2.0.3</version>
         </dependency>
     </dependencies>
 

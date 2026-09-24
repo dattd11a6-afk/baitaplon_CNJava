@@ -1,5 +1,6 @@
 package com.fruitfarmermarket.controller;
 
+import com.fruitfarmermarket.dao.OrderDAO;
 import com.fruitfarmermarket.model.User;
 import com.fruitfarmermarket.utils.DBConnection;
 import jakarta.servlet.ServletException;
@@ -12,79 +13,93 @@ import jakarta.servlet.http.HttpSession;
 import jakarta.servlet.http.Part;
 import java.io.File;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 
-// trang cá nhân
 @WebServlet("/profile")
-@MultipartConfig(fileSizeThreshold = 1024 * 1024, maxFileSize = 1024 * 1024 * 2, maxRequestSize = 1024 * 1024 * 5) // Cho phép upload file max 2MB
+@MultipartConfig(fileSizeThreshold = 1024 * 1024, maxFileSize = 1024 * 1024 * 2, maxRequestSize = 1024 * 1024 * 5)
 public class ProfileServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        if (request.getSession().getAttribute("user") == null) {
+        HttpSession session = request.getSession(false);
+        if (session == null || session.getAttribute("user") == null) {
             response.sendRedirect(request.getContextPath() + "/login");
             return;
         }
+
+        // LẤY DỮ LIỆU TỔNG CHI TIÊU THẬT TỪ DATABASE NÉM SANG GIAO DIỆN
+        User user = (User) session.getAttribute("user");
+        OrderDAO orderDAO = new OrderDAO();
+        BigDecimal totalSpend = orderDAO.getTotalSpendByUserId(user.getId());
+        request.setAttribute("totalSpend", totalSpend);
+
         request.getRequestDispatcher("/view/user/profile.jsp").forward(request, response);
     }
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         request.setCharacterEncoding("UTF-8");
-        HttpSession session = request.getSession();
-        User user = (User) session.getAttribute("user");
+        HttpSession session = request.getSession(false);
 
-        if (user == null) {
+        if (session == null || session.getAttribute("user") == null) {
             response.sendRedirect(request.getContextPath() + "/login");
             return;
         }
 
-        String fullName = request.getParameter("fullName");
-        String phone = request.getParameter("phone");
-        String address = request.getParameter("address");
-        String avatarName = user.getAvatar(); // Giữ nguyên ảnh cũ nếu không up ảnh mới
+        User user = (User) session.getAttribute("user");
 
-        try {
-            // XỬ LÝ LƯU FILE ẢNH
-            Part filePart = request.getPart("avatarFile");
-            if (filePart != null && filePart.getSize() > 0) {
-                // Đường dẫn lưu file vào dự án
-                String uploadPath = request.getServletContext().getRealPath("") + File.separator + "assets" + File.separator + "images" + File.separator + "users";
-                File uploadDir = new File(uploadPath);
-                if (!uploadDir.exists()) uploadDir.mkdirs();
+        String action = request.getParameter("action");
+        if (action == null) action = "updateProfile";
 
-                // Tạo tên file mới tránh trùng lặp
-                String originalFileName = Paths.get(filePart.getSubmittedFileName()).getFileName().toString();
-                avatarName = "user_" + user.getId() + "_" + originalFileName;
-                filePart.write(uploadPath + File.separator + avatarName);
-            }
+        if ("updateProfile".equals(action)) {
+            String fullName = request.getParameter("fullName");
+            String phone = request.getParameter("phone");
+            String address = request.getParameter("address");
+            String avatarName = user.getAvatar();
 
-            // Cập nhật Database
-            String sql = "UPDATE users SET full_name = ?, phone = ?, address = ?, avatar = ? WHERE id = ?";
-            try (Connection conn = DBConnection.getConnection();
-                 PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setString(1, fullName);
-                ps.setString(2, phone);
-                ps.setString(3, address);
-                ps.setString(4, avatarName);
-                ps.setInt(5, user.getId());
+            try {
+                String contentType = request.getContentType();
+                if (contentType != null && contentType.toLowerCase().contains("multipart/form-data")) {
+                    Part filePart = request.getPart("avatarFile");
+                    if (filePart != null && filePart.getSize() > 0) {
+                        String uploadPath = request.getServletContext().getRealPath("") + File.separator + "assets" + File.separator + "images" + File.separator + "users";
+                        File uploadDir = new File(uploadPath);
+                        if (!uploadDir.exists()) uploadDir.mkdirs();
 
-                if (ps.executeUpdate() > 0) {
-                    // Cập nhật lại Session
-                    user.setFullName(fullName);
-                    user.setPhone(phone);
-                    user.setAddress(address);
-                    user.setAvatar(avatarName);
-                    session.setAttribute("user", user);
-                    session.setAttribute("successMsg", "Cập nhật hồ sơ thành công!");
+                        String originalFileName = Paths.get(filePart.getSubmittedFileName()).getFileName().toString();
+                        avatarName = "user_" + user.getId() + "_" + originalFileName;
+                        filePart.write(uploadPath + File.separator + avatarName);
+                    }
                 }
+
+                String sql = "UPDATE users SET full_name = ?, phone = ?, address = ?, avatar = ? WHERE id = ?";
+                try (Connection conn = DBConnection.getConnection();
+                     PreparedStatement ps = conn.prepareStatement(sql)) {
+                    ps.setString(1, fullName);
+                    ps.setString(2, phone);
+                    ps.setString(3, address);
+                    ps.setString(4, avatarName);
+                    ps.setInt(5, user.getId());
+
+                    if (ps.executeUpdate() > 0) {
+                        user.setFullName(fullName);
+                        user.setPhone(phone);
+                        user.setAddress(address);
+                        user.setAvatar(avatarName);
+                        session.setAttribute("user", user);
+                        session.setAttribute("successMsg", "Cập nhật hồ sơ và địa chỉ thành công!");
+                    } else {
+                        session.setAttribute("errorMsg", "Cập nhật thất bại, vui lòng thử lại!");
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                session.setAttribute("errorMsg", "Lỗi cập nhật hệ thống!");
             }
-        } catch (Exception e) {
-            e.printStackTrace();
-            session.setAttribute("errorMsg", "Lỗi cập nhật hệ thống!");
+            response.sendRedirect(request.getContextPath() + "/profile");
         }
-        response.sendRedirect(request.getContextPath() + "/profile");
     }
 }

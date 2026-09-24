@@ -3,8 +3,10 @@ package com.fruitfarmermarket.dao;
 import com.fruitfarmermarket.model.CartItem;
 import com.fruitfarmermarket.model.Order;
 import com.fruitfarmermarket.model.OrderDetail;
+import com.fruitfarmermarket.model.OrderStatusHistory;
 import com.fruitfarmermarket.utils.DBConnection;
 
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -15,9 +17,6 @@ import java.util.List;
 
 public class OrderDAO {
 
-    // ==========================================
-    // 1. TẠO ĐƠN HÀNG (CÓ TRANSACTION TRỪ KHO)
-    // ==========================================
     public int createOrder(Order order, List<CartItem> cart) {
         int orderId = -1;
         Connection conn = null;
@@ -28,46 +27,92 @@ public class OrderDAO {
 
         try {
             conn = DBConnection.getConnection();
-            conn.setAutoCommit(false); // BẮT ĐẦU TRANSACTION
+            conn.setAutoCommit(false);
 
-            // 1. Lưu Order
             try (PreparedStatement psOrder = conn.prepareStatement(sqlOrder, Statement.RETURN_GENERATED_KEYS)) {
-                psOrder.setInt(1, order.getUserId());
+                if (order.getUserId() > 0) psOrder.setInt(1, order.getUserId());
+                else psOrder.setNull(1, java.sql.Types.INTEGER);
+
                 psOrder.setString(2, order.getReceiverName());
                 psOrder.setString(3, order.getReceiverPhone());
                 psOrder.setString(4, order.getReceiverAddress());
                 psOrder.setBigDecimal(5, order.getTotalAmount());
                 psOrder.setString(6, order.getPaymentMethod());
-                psOrder.setString(7, order.getPaymentStatus());
-                psOrder.setString(8, order.getOrderStatus());
+                psOrder.setString(7, order.getPaymentStatus() != null ? order.getPaymentStatus() : "PENDING");
+                psOrder.setString(8, order.getOrderStatus() != null ? order.getOrderStatus() : "PENDING");
                 psOrder.setString(9, order.getNote());
                 psOrder.executeUpdate();
 
-                // Lấy ID đơn hàng vừa tạo
                 try (ResultSet rs = psOrder.getGeneratedKeys()) {
-                    if (rs.next()) {
-                        orderId = rs.getInt(1);
-                    }
+                    if (rs.next()) orderId = rs.getInt(1);
                 }
             }
 
-            // 2. Lưu Order Details & 3. Trừ Stock
+            // 2. Lưu Order Details & 3. Trừ Stock (ĐÃ FIX: BUNG CHI TIẾT GIỎ QUÀ)
             if (orderId != -1) {
                 try (PreparedStatement psDetail = conn.prepareStatement(sqlDetail);
                      PreparedStatement psStock = conn.prepareStatement(sqlUpdateStock)) {
 
                     for (CartItem item : cart) {
-                        psDetail.setInt(1, orderId);
-                        psDetail.setInt(2, item.getProduct().getId());
-                        psDetail.setString(3, item.getProduct().getName());
-                        psDetail.setBigDecimal(4, item.getProduct().getPrice());
-                        psDetail.setInt(5, item.getQuantity());
-                        psDetail.setBigDecimal(6, item.getSubtotal());
-                        psDetail.addBatch();
 
-                        psStock.setInt(1, item.getQuantity());
-                        psStock.setInt(2, item.getProduct().getId());
-                        psStock.addBatch();
+                        // KIỂM TRA NẾU MÓN HÀNG NÀY LÀ GIỎ QUÀ MIX
+                        if (item.getClass().getSimpleName().equals("GiftBasketCartItem")) {
+                            try {
+                                Object basket = item.getClass().getMethod("getBasket").invoke(item);
+                                Object decoration = item.getClass().getMethod("getDecoration").invoke(item);
+                                Object packaging = item.getClass().getMethod("getPackaging").invoke(item);
+                                String cardMsg = (String) item.getClass().getMethod("getCardMessage").invoke(item);
+                                List<CartItem> fruitItems = (List<CartItem>) item.getClass().getMethod("getFruitItems").invoke(item);
+
+                                String basketName = (String) basket.getClass().getMethod("getName").invoke(basket);
+                                String decorName = (String) decoration.getClass().getMethod("getName").invoke(decoration);
+                                String packName = (String) packaging.getClass().getMethod("getName").invoke(packaging);
+
+                                // DÒNG 1: Lưu Khung Giỏ Quà (Chứa Phụ kiện & Lời chúc)
+                                String basketDesc = "🎁 Giỏ Mix: " + basketName + " + " + decorName + " + " + packName;
+                                if (cardMsg != null && !cardMsg.trim().isEmpty()) {
+                                    basketDesc += " | Thiệp: " + cardMsg;
+                                }
+
+                                psDetail.setInt(1, orderId);
+                                psDetail.setNull(2, java.sql.Types.INTEGER); // Giỏ ảo không có product_id gốc
+                                psDetail.setString(3, basketDesc);
+                                psDetail.setBigDecimal(4, item.getSubtotal()); // Gom tổng tiền vào dòng này
+                                psDetail.setInt(5, 1);
+                                psDetail.setBigDecimal(6, item.getSubtotal());
+                                psDetail.addBatch();
+
+                                // DÒNG 2+: Lưu từng loại Trái cây và TRỪ KHO
+                                for (CartItem fruit : fruitItems) {
+                                    psDetail.setInt(1, orderId);
+                                    psDetail.setInt(2, fruit.getProduct().getId());
+                                    psDetail.setString(3, "   ↪ " + fruit.getProduct().getName() + " (Trong giỏ)");
+                                    psDetail.setBigDecimal(4, java.math.BigDecimal.ZERO); // Tiền đã gom ở trên
+                                    psDetail.setInt(5, fruit.getQuantity());
+                                    psDetail.setBigDecimal(6, java.math.BigDecimal.ZERO);
+                                    psDetail.addBatch();
+
+                                    // Trừ kho thật
+                                    psStock.setInt(1, fruit.getQuantity());
+                                    psStock.setInt(2, fruit.getProduct().getId());
+                                    psStock.addBatch();
+                                }
+                            } catch (Exception e) { e.printStackTrace(); }
+                        }
+                        // KỊCH BẢN B: ĐỒ MUA LẺ BÌNH THƯỜNG
+                        else {
+                            psDetail.setInt(1, orderId);
+                            psDetail.setInt(2, item.getProduct().getId());
+                            psDetail.setString(3, item.getProduct().getName());
+                            psDetail.setBigDecimal(4, item.getProduct().getPrice());
+                            psDetail.setInt(5, item.getQuantity());
+                            psDetail.setBigDecimal(6, item.getSubtotal());
+                            psDetail.addBatch();
+
+                            psStock.setInt(1, item.getQuantity());
+                            psStock.setInt(2, item.getProduct().getId());
+                            psStock.addBatch();
+                        }
                     }
                     psDetail.executeBatch();
                     psStock.executeBatch();
@@ -89,9 +134,6 @@ public class OrderDAO {
         return orderId;
     }
 
-    // ==========================================
-    // 2. LẤY DANH SÁCH ĐƠN HÀNG CỦA 1 USER
-    // ==========================================
     public List<Order> getOrdersByUserId(int userId) {
         List<Order> list = new ArrayList<>();
         String sql = "SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC";
@@ -107,7 +149,7 @@ public class OrderDAO {
                     order.setPaymentMethod(rs.getString("payment_method"));
                     order.setPaymentStatus(rs.getString("payment_status"));
                     order.setOrderStatus(rs.getString("order_status"));
-                    order.setCancelReason(rs.getString("cancel_reason")); // Đọc lý do hủy từ DB
+                    order.setCancelReason(rs.getString("cancel_reason"));
                     order.setCreatedAt(rs.getTimestamp("created_at"));
                     list.add(order);
                 }
@@ -118,9 +160,6 @@ public class OrderDAO {
         return list;
     }
 
-    // ==========================================
-    // 3. LẤY CHI TIẾT 1 ĐƠN HÀNG (CÓ CHECK BẢO MẬT USER_ID)
-    // ==========================================
     public Order getOrderByIdAndUserId(int orderId, int userId) {
         Order order = null;
         String sql = "SELECT * FROM orders WHERE id = ? AND user_id = ?";
@@ -141,7 +180,7 @@ public class OrderDAO {
                     order.setPaymentStatus(rs.getString("payment_status"));
                     order.setOrderStatus(rs.getString("order_status"));
                     order.setNote(rs.getString("note"));
-                    order.setCancelReason(rs.getString("cancel_reason")); // Đọc lý do hủy từ DB
+                    order.setCancelReason(rs.getString("cancel_reason"));
                     order.setCreatedAt(rs.getTimestamp("created_at"));
                 }
             }
@@ -151,9 +190,6 @@ public class OrderDAO {
         return order;
     }
 
-    // ==========================================
-    // 4. LẤY DANH SÁCH SẢN PHẨM TRONG 1 ĐƠN HÀNG
-    // ==========================================
     public List<OrderDetail> getOrderDetailsByOrderId(int orderId) {
         List<OrderDetail> list = new ArrayList<>();
         String sql = "SELECT * FROM order_details WHERE order_id = ?";
@@ -179,16 +215,11 @@ public class OrderDAO {
         return list;
     }
 
-    // ==========================================
-    // 5. CÁC HÀM CHO ADMIN DASHBOARD (BẢN FULL)
-    // ==========================================
-    // Lấy danh sách đơn hàng mới nhất
     public List<Order> getRecentOrders(int limit) {
         List<Order> list = new ArrayList<>();
         String sql = "SELECT * FROM orders ORDER BY created_at DESC LIMIT ?";
         try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, limit);
+             PreparedStatement ps =prepareStatement(sql, limit)) {
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     Order order = new Order();
@@ -205,7 +236,13 @@ public class OrderDAO {
         return list;
     }
 
-    // Lấy TẤT CẢ đơn hàng của hệ thống (Cho Admin)
+    private PreparedStatement prepareStatement(String sql, int limit) throws SQLException {
+        Connection conn = DBConnection.getConnection();
+        PreparedStatement ps = conn.prepareStatement(sql);
+        ps.setInt(1, limit);
+        return ps;
+    }
+
     public List<Order> getAllOrdersForAdmin() {
         List<Order> list = new ArrayList<>();
         String sql = "SELECT * FROM orders ORDER BY created_at DESC";
@@ -230,7 +267,6 @@ public class OrderDAO {
         return list;
     }
 
-    // Cập nhật trạng thái đơn hàng
     public boolean updateOrderStatus(int orderId, String status) {
         String sql = "UPDATE orders SET order_status = ? WHERE id = ?";
         try (Connection conn = DBConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -239,10 +275,6 @@ public class OrderDAO {
         return false;
     }
 
-    // ==========================================
-    // 6. CÁC HÀM CHO NHÂN VIÊN (STAFF)
-    // ==========================================
-    // Lấy chi tiết 1 đơn hàng
     public Order getOrderById(int orderId) {
         Order order = null;
         String sql = "SELECT * FROM orders WHERE id = ?";
@@ -270,7 +302,6 @@ public class OrderDAO {
         return order;
     }
 
-    // Đổi trạng thái đơn hàng & Ghi lịch sử
     public boolean updateOrderStatusWithHistory(int orderId, String oldStatus, String newStatus, int changedBy, String reason) {
         Connection conn = null;
         String sqlUpdateOrder = "UPDATE orders SET order_status = ? WHERE id = ?";
@@ -306,7 +337,6 @@ public class OrderDAO {
         }
     }
 
-    // Hủy đơn hàng & Hoàn lại Tồn kho & Ghi lịch sử
     public boolean cancelOrderWithStockRestore(int orderId, int changedBy, String reason, List<OrderDetail> details) {
         Connection conn = null;
         String sqlUpdateOrder = "UPDATE orders SET order_status = 'CANCELLED' WHERE id = ?";
@@ -351,9 +381,6 @@ public class OrderDAO {
         }
     }
 
-    // ==========================================
-    // 7. TẠO ĐƠN TẠI QUẦY (POS) CHO STAFF
-    // ==========================================
     public int createStoreOrder(Order order, List<CartItem> cart, int staffId) {
         int orderId = -1;
         Connection conn = null;
@@ -423,9 +450,6 @@ public class OrderDAO {
         return orderId;
     }
 
-    // ==========================================
-    // 8. TÍNH NĂNG MỚI: KHÁCH HÀNG TỰ HỦY ĐƠN & HOÀN KHO
-    // ==========================================
     public boolean cancelOrderByCustomer(int orderId, int userId, String reason, List<OrderDetail> details) {
         Connection conn = null;
         String sqlUpdateOrder = "UPDATE orders SET order_status = 'CANCELLED', cancel_reason = ? WHERE id = ? AND user_id = ?";
@@ -463,5 +487,48 @@ public class OrderDAO {
         } finally {
             if (conn != null) try { conn.setAutoCommit(true); conn.close(); } catch (SQLException e) { e.printStackTrace(); }
         }
+    }
+
+    public List<OrderStatusHistory> getOrderHistory(int orderId) {
+        List<OrderStatusHistory> historyList = new ArrayList<>();
+        String sql = "SELECT * FROM order_status_history WHERE order_id = ? ORDER BY created_at ASC";
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, orderId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    OrderStatusHistory h = new OrderStatusHistory();
+                    h.setId(rs.getInt("id"));
+                    h.setOrderId(rs.getInt("order_id"));
+                    h.setOldStatus(rs.getString("old_status"));
+                    h.setNewStatus(rs.getString("new_status"));
+                    h.setChangedBy(rs.getInt("changed_by"));
+                    h.setReason(rs.getString("reason"));
+                    h.setCreatedAt(rs.getTimestamp("created_at"));
+                    historyList.add(h);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return historyList;
+    }
+
+    public BigDecimal getTotalSpendByUserId(int userId) {
+        BigDecimal total = BigDecimal.ZERO;
+        String sql = "SELECT SUM(total_amount) FROM orders WHERE user_id = ? AND order_status = 'COMPLETED'";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next() && rs.getBigDecimal(1) != null) {
+                    total = rs.getBigDecimal(1);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return total;
     }
 }

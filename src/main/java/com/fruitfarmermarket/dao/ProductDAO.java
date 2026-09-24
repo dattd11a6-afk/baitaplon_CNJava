@@ -270,4 +270,49 @@ public class ProductDAO {
         } catch (SQLException e) { e.printStackTrace(); }
         return list;
     }
+    // Lấy danh sách sản phẩm nổi bật (mới nhất) cho Trang chủ
+    public List<Product> getFeaturedProducts(int limit) {
+        List<Product> list = new ArrayList<>();
+        // Lấy các sản phẩm mới nhất dựa vào ID giảm dần
+        String sql = "SELECT * FROM products ORDER BY id DESC LIMIT ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, limit);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Product p = new Product();
+                    p.setId(rs.getInt("id"));
+                    p.setName(rs.getString("name"));
+                    p.setPrice(rs.getBigDecimal("price"));
+                    p.setImage(rs.getString("image"));
+                    p.setUnit(rs.getString("unit"));
+                    p.setStock(rs.getInt("stock"));
+                    // Nếu có cột origin, description... thì bác có thể get thêm
+                    list.add(p);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+    // ==========================================
+    // HÀM MỚI: DÀNH RIÊNG CHO MODULE MIX GIỎ QUÀ
+    // ==========================================
+    public List<Product> getActiveProducts() {
+        List<Product> list = new ArrayList<>();
+        // Chỉ lấy sản phẩm có trạng thái ACTIVE và số lượng tồn kho > 0
+        String sql = "SELECT p.*, c.name AS category_name FROM products p JOIN categories c ON p.category_id = c.id WHERE p.status = 'ACTIVE' AND p.stock > 0 ORDER BY p.name ASC";
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                list.add(mapResultSetToProduct(rs));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
 }

@@ -13,6 +13,7 @@ public class User {
     private String status;
     private Timestamp createdAt;
     private String avatar;
+    private int rewardPoints; // Điểm thưởng
 
     public User() {}
 
@@ -24,9 +25,9 @@ public class User {
         this.address = address;
         this.role = "CUSTOMER";
         this.status = "ACTIVE";
+        this.rewardPoints = 0;
     }
 
-    // Getters and Setters
     public int getId() { return id; }
     public void setId(int id) { this.id = id; }
     public String getFullName() { return fullName; }
@@ -47,4 +48,6 @@ public class User {
     public void setCreatedAt(Timestamp createdAt) { this.createdAt = createdAt; }
     public String getAvatar() { return avatar; }
     public void setAvatar(String avatar) { this.avatar = avatar; }
+    public int getRewardPoints() { return rewardPoints; }
+    public void setRewardPoints(int rewardPoints) { this.rewardPoints = rewardPoints; }
 }

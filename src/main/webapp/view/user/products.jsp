@@ -188,7 +188,7 @@
         function submitFilter() { document.getElementById('pageInput').value = 1; document.getElementById('filterForm').submit(); }
         function gotoPage(pageNumber) { document.getElementById('pageInput').value = pageNumber; document.getElementById('filterForm').submit(); }
 
-        // Kích hoạt Toast
+        <!-- Toast -->
         document.addEventListener("DOMContentLoaded", function() {
             var toastElList = [].slice.call(document.querySelectorAll('.toast'));
             var toastList = toastElList.map(function(toastEl) { return new bootstrap.Toast(toastEl, { delay: 3000 }); });

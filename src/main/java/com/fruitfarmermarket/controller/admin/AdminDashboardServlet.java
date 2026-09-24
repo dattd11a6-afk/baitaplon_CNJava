@@ -30,7 +30,7 @@ public class AdminDashboardServlet extends HttpServlet {
     private ReportDAO reportDAO = new ReportDAO();
     private OrderDAO orderDAO = new OrderDAO();
     private ProductDAO productDAO = new ProductDAO();
-    private DashboardDAO dashboardDAO = new DashboardDAO(); // DAO Mới
+    private DashboardDAO dashboardDAO = new DashboardDAO();
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {

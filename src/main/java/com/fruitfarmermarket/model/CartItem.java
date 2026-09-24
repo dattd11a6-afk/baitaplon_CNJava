@@ -19,15 +19,17 @@ public class CartItem {
     public int getQuantity() { return quantity; }
     public void setQuantity(int quantity) { this.quantity = quantity; }
 
-    /**
-     * Tính thành tiền của 1 sản phẩm trong giỏ
-     * Trả về BigDecimal để đồng bộ với kiểu dữ liệu giá tiền
-     */
+    // --- FIX LỖI ĐA HÌNH EL ---
+    // Khai báo hàm ảo để JSP có thể gọi ${item.basketSessionId} an toàn mà không bị lỗi PropertyNotFound
+    // Lớp con GiftBasketCartItem sẽ tự động ghi đè (override) hàm này và trả về chuỗi ID thật.
+    public String getBasketSessionId() {
+        return null;
+    }
+
     public BigDecimal getSubtotal() {
         if (this.product == null || this.product.getPrice() == null) {
             return BigDecimal.ZERO;
         }
-        // Ép kiểu quantity sang BigDecimal và sử dụng hàm multiply() thay vì dấu *
         return this.product.getPrice().multiply(BigDecimal.valueOf(this.quantity));
     }
 }

@@ -4,9 +4,11 @@ import com.fruitfarmermarket.dao.ProductDAO;
 import com.fruitfarmermarket.dao.OrderDAO;
 import com.fruitfarmermarket.dao.VoucherDAO;
 import com.fruitfarmermarket.model.CartItem;
+import com.fruitfarmermarket.model.GiftBasketCartItem; // Kéo model giỏ quà vào
 import com.fruitfarmermarket.model.Product;
 import com.fruitfarmermarket.model.OrderDetail;
 import com.fruitfarmermarket.model.Voucher;
+import com.fruitfarmermarket.model.User;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -32,7 +34,6 @@ public class CartServlet extends HttpServlet {
         voucherDAO = new VoucherDAO();
     }
 
-    // Hiển thị Giỏ hàng
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         HttpSession session = request.getSession();
@@ -45,7 +46,6 @@ public class CartServlet extends HttpServlet {
             }
         }
 
-        // ĐẨY DANH SÁCH VOUCHER TỪ DB LÊN ĐỂ SHOW RA POPUP
         List<Voucher> availableVouchers = voucherDAO.getAllVouchers();
         request.setAttribute("availableVouchers", availableVouchers);
 
@@ -54,24 +54,30 @@ public class CartServlet extends HttpServlet {
         request.getRequestDispatcher("/view/user/cart.jsp").forward(request, response);
     }
 
-    // Xử lý logic (Thêm/Sửa/Xóa/Voucher) - GIỮ NGUYÊN BẢN CŨ 100%
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         String action = request.getParameter("action");
         if (action == null) action = "";
 
         HttpSession session = request.getSession();
+        User user = (User) session.getAttribute("user");
+
         List<CartItem> cart = (List<CartItem>) session.getAttribute("cart");
         if (cart == null) {
             cart = new ArrayList<>();
         }
 
         try {
-            // TÍNH NĂNG VOUCHER
             if ("apply_voucher".equals(action)) {
+                // (Giữ nguyên logic Voucher)
+                if (user == null) {
+                    session.setAttribute("errorMsg", "Khách hàng đăng nhập hoặc liên kết Google để nhận ưu đãi từ Voucher này nhé!");
+                    response.sendRedirect(request.getContextPath() + "/cart");
+                    return;
+                }
+
                 String code = request.getParameter("voucherCode").trim().toUpperCase();
                 BigDecimal cartSubtotal = (BigDecimal) session.getAttribute("cartSubtotal");
-
                 if (cartSubtotal == null) cartSubtotal = BigDecimal.ZERO;
 
                 Voucher voucher = voucherDAO.getVoucherByCode(code);
@@ -94,7 +100,6 @@ public class CartServlet extends HttpServlet {
                     } else {
                         discount = voucher.getDiscountValue();
                     }
-
                     if (discount.compareTo(cartSubtotal) > 0) discount = cartSubtotal;
 
                     session.setAttribute("appliedVoucher", voucher);
@@ -112,8 +117,12 @@ public class CartServlet extends HttpServlet {
                 return;
             }
 
-            // LUỒNG CŨ: MUA LẠI
             if ("repurchase".equals(action)) {
+                if (user == null) {
+                    session.setAttribute("errorMsg", "Vui lòng đăng nhập để sử dụng tính năng mua lại!");
+                    response.sendRedirect(request.getContextPath() + "/login");
+                    return;
+                }
                 int orderId = Integer.parseInt(request.getParameter("orderId"));
                 List<OrderDetail> oldOrderDetails = orderDAO.getOrderDetailsByOrderId(orderId);
                 for (OrderDetail od : oldOrderDetails) {
@@ -125,9 +134,15 @@ public class CartServlet extends HttpServlet {
                 return;
             }
 
-            // LUỒNG CŨ: THÊM, SỬA, XÓA
             if ("clear".equals(action)) {
                 cart.clear();
+            } else if ("remove_basket".equals(action)) {
+
+                // FIX LOGIC XÓA GIỎ QUÀ SẠCH SẼ VỚI INSTANCEOF
+                String basketSessionId = request.getParameter("basketSessionId");
+                cart.removeIf(item -> item instanceof GiftBasketCartItem && basketSessionId.equals(((GiftBasketCartItem) item).getBasketSessionId()));
+                session.setAttribute("successMsg", "Đã hủy Giỏ quà tùy chỉnh.");
+
             } else {
                 int productId = Integer.parseInt(request.getParameter("id"));
                 switch (action) {
@@ -140,7 +155,7 @@ public class CartServlet extends HttpServlet {
                         updateCart(cart, productId, newQuantity, request);
                         break;
                     case "remove":
-                        cart.removeIf(item -> item.getProduct().getId() == productId);
+                        cart.removeIf(item -> item.getProduct() != null && item.getProduct().getId() == productId);
                         session.setAttribute("successMsg", "Đã xóa sản phẩm khỏi giỏ hàng.");
                         break;
                 }
@@ -150,12 +165,12 @@ public class CartServlet extends HttpServlet {
             session.setAttribute("errorMsg", "Có lỗi xảy ra, vui lòng thử lại!");
         }
 
-        session.removeAttribute("appliedVoucher");
-        session.removeAttribute("discountAmount");
         session.setAttribute("cart", cart);
 
         if ("add".equals(action)) {
-            response.sendRedirect(request.getContextPath() + "/product?id=" + request.getParameter("id"));
+            String referer = request.getHeader("referer");
+            if (referer != null && !referer.isEmpty()) response.sendRedirect(referer);
+            else response.sendRedirect(request.getContextPath() + "/products");
         } else {
             response.sendRedirect(request.getContextPath() + "/cart");
         }
@@ -166,7 +181,7 @@ public class CartServlet extends HttpServlet {
         if (product == null || product.getStock() <= 0) return;
 
         for (CartItem item : cart) {
-            if (item.getProduct().getId() == productId) {
+            if (item.getProduct() != null && item.getProduct().getId() == productId) {
                 int newQty = item.getQuantity() + quantityToAdd;
                 if (newQty > product.getStock()) {
                     request.getSession().setAttribute("errorMsg", "Không đủ số lượng tồn kho!");
@@ -189,7 +204,7 @@ public class CartServlet extends HttpServlet {
         if (product == null) return;
 
         if (newQuantity <= 0) {
-            cart.removeIf(item -> item.getProduct().getId() == productId);
+            cart.removeIf(item -> item.getProduct() != null && item.getProduct().getId() == productId);
             return;
         }
 
@@ -199,7 +214,7 @@ public class CartServlet extends HttpServlet {
         }
 
         for (CartItem item : cart) {
-            if (item.getProduct().getId() == productId) {
+            if (item.getProduct() != null && item.getProduct().getId() == productId) {
                 item.setQuantity(newQuantity);
                 break;
             }

@@ -6,10 +6,10 @@ import java.sql.Timestamp;
 public class Product {
     private int id;
     private int categoryId;
-    private String categoryName; // Dùng để hiển thị tên danh mục trực tiếp khi JOIN bảng
+    private String categoryName; // Dùng để hiển thị tên danh mục
     private String name;
     private String description;
-    private BigDecimal price;    // Sử dụng BigDecimal thay cho double
+    private BigDecimal price;
     private String unit;
     private int stock;
     private String image;

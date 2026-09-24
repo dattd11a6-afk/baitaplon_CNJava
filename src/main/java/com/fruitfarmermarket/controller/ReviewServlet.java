@@ -1,59 +1,74 @@
 package com.fruitfarmermarket.controller;
 
+import com.fruitfarmermarket.dao.ReviewDAO;
+import com.fruitfarmermarket.model.Review;
 import com.fruitfarmermarket.model.User;
-import com.fruitfarmermarket.utils.DBConnection;
 
 import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.*;
+import java.io.File;
 import java.io.IOException;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
+import java.nio.file.Paths;
 
-// đánh giá sản phẩm
 @WebServlet("/review")
+@MultipartConfig(fileSizeThreshold = 1024 * 1024, maxFileSize = 1024 * 1024 * 50, maxRequestSize = 1024 * 1024 * 100) // Cho phép upload file tối đa 50MB (chứa được video ngắn)
 public class ReviewServlet extends HttpServlet {
+    private ReviewDAO reviewDAO = new ReviewDAO();
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        // Kiểm tra xem khách đã đăng nhập chưa
-        User user = (User) request.getSession().getAttribute("user");
+        request.setCharacterEncoding("UTF-8");
+        HttpSession session = request.getSession();
+        User user = (User) session.getAttribute("user");
+
         if (user == null) {
             response.sendRedirect(request.getContextPath() + "/login");
             return;
         }
 
         try {
-            // Lấy dữ liệu từ Form gửi lên
             int productId = Integer.parseInt(request.getParameter("productId"));
-            int orderId = Integer.parseInt(request.getParameter("orderId"));
-            int ratingValue = Integer.parseInt(request.getParameter("ratingValue"));
+            int orderId = Integer.parseInt(request.getParameter("orderId")); // Lấy từ form lịch sử mua hàng
+            int rating = Integer.parseInt(request.getParameter("rating"));
             String comment = request.getParameter("comment");
+            String mediaName = null;
 
-            String sql = "INSERT INTO reviews (user_id, product_id, order_id, rating, comment) VALUES (?, ?, ?, ?, ?)";
+            // Xử lý Upload Ảnh / Video
+            Part filePart = request.getPart("mediaFile");
+            if (filePart != null && filePart.getSize() > 0) {
+                String uploadPath = request.getServletContext().getRealPath("") + File.separator + "assets" + File.separator + "images" + File.separator + "reviews";
+                File uploadDir = new File(uploadPath);
+                if (!uploadDir.exists()) uploadDir.mkdirs();
 
-            try (Connection conn = DBConnection.getConnection();
-                 PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setInt(1, user.getId());
-                ps.setInt(2, productId);
-                ps.setInt(3, orderId);
-                ps.setInt(4, ratingValue);
-                ps.setString(5, comment);
-
-                if (ps.executeUpdate() > 0) {
-                    request.getSession().setAttribute("successMsg", "Gửi đánh giá " + ratingValue + " sao thành công!");
-                } else {
-                    request.getSession().setAttribute("errorMsg", "Không thể lưu đánh giá lúc này!");
-                }
+                String originalFileName = Paths.get(filePart.getSubmittedFileName()).getFileName().toString();
+                // Đổi tên file để chống trùng lặp
+                mediaName = System.currentTimeMillis() + "_" + originalFileName;
+                filePart.write(uploadPath + File.separator + mediaName);
             }
+
+            Review r = new Review();
+            r.setUserId(user.getId());
+            r.setProductId(productId);
+            r.setOrderId(orderId);
+            r.setRating(rating);
+            r.setComment(comment);
+            r.setMediaUrl(mediaName);
+
+            if (reviewDAO.insertReview(r)) {
+                session.setAttribute("successMsg", "Cảm ơn bạn đã đánh giá sản phẩm!");
+            } else {
+                session.setAttribute("errorMsg", "Không thể gửi đánh giá, vui lòng thử lại.");
+            }
+
+            // Quay lại trang chi tiết sản phẩm
+            response.sendRedirect(request.getContextPath() + "/product?id=" + productId);
+
         } catch (Exception e) {
             e.printStackTrace();
-            request.getSession().setAttribute("errorMsg", "Hệ thống bận, vui lòng thử lại sau!");
+            session.setAttribute("errorMsg", "Dữ liệu không hợp lệ.");
+            response.sendRedirect(request.getContextPath() + "/");
         }
-
-        // Chuyển hướng lại trang Lịch sử đơn hàng
-        response.sendRedirect(request.getContextPath() + "/orders/history");
     }
 }

@@ -8,22 +8,29 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 
-// đặt hàng thành công
-@WebServlet("/order-success")
+@WebServlet("/checkout-success")
 public class OrderSuccessServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         HttpSession session = request.getSession();
 
-        // Kiểm tra xem có đơn hàng vừa đặt trong session không
-        if (session.getAttribute("lastOrder") == null) {
-            // Nếu khách tự gõ URL /order-success mà chưa mua hàng -> đuổi về trang chủ
+        // 1. Kiểm tra xem khách có thực sự vừa đặt hàng không
+        Integer lastOrderId = (Integer) session.getAttribute("lastOrderId");
+
+        if (lastOrderId == null) {
+            // Khách tự gõ URL mạo danh -> Đuổi về trang chủ
             response.sendRedirect(request.getContextPath() + "/");
             return;
         }
 
-        // Forward sang trang giao diện
-        request.getRequestDispatcher("/view/user/order-success.jsp").forward(request, response);
+        // 2. Chuyển ID sang request để hiển thị trên giao diện
+        request.setAttribute("orderId", lastOrderId);
+
+        // (Tùy chọn) Xóa lastOrderId đi để F5 không hiện lại, nhưng giữ lại cũng tốt để khách xem
+        // session.removeAttribute("lastOrderId");
+
+        // 3. Render trang Cảm ơn
+        request.getRequestDispatcher("/view/user/checkout-success.jsp").forward(request, response);
     }
 }

@@ -39,8 +39,15 @@
         .tracking-item::before { content: ''; position: absolute; left: -31px; top: 0; width: 12px; height: 12px; border-radius: 50%; background: var(--primary); border: 2px solid #fff; }
         .tracking-item.text-muted::before { background: #ccc; border-color: #fff; }
         .tracking-item.text-muted { border-left-color: #ccc; }
-        .star-rating { font-size: 32px; color: #D1D5DB; cursor: pointer; display: flex; gap: 8px; justify-content: center; margin: 16px 0; }
-        .star-rating i.active, .star-rating i:hover { color: #F59E0B; }
+
+        /* CSS CHUẨN CHO ĐÁNH GIÁ SAO TƯƠNG TÁC */
+        .rating-stars { display: flex; gap: 8px; flex-direction: row-reverse; justify-content: center; }
+        .rating-stars input { display: none; }
+        .rating-stars label { font-size: 32px; color: #E5E7EB; cursor: pointer; transition: color 0.2s ease; }
+        .rating-stars input:checked ~ label,
+        .rating-stars label:hover,
+        .rating-stars label:hover ~ label { color: #F59E0B; }
+        #ratingText { font-weight: 600; color: #F59E0B; margin-top: 8px; text-align: center;}
     </style>
 </head>
 <body>
@@ -173,7 +180,8 @@
                                         <input type="hidden" name="orderId" value="${o.id}">
                                         <button type="submit" class="btn-shopee-outline">Mua lại</button>
                                     </form>
-                                    <button class="btn-shopee-primary btn-rate" data-order="${o.id}" data-bs-toggle="modal" data-bs-target="#ratingModal">Đánh giá</button>
+                                    <!-- Nút Đánh giá giờ đã truyền thêm data-product để lấy đúng ID sản phẩm đầu tiên của đơn hàng -->
+                                    <button class="btn-shopee-primary btn-rate" data-order="${o.id}" data-product="${orderItemsMap[o.id][0].product.id}" data-bs-toggle="modal" data-bs-target="#ratingModal">Đánh giá</button>
                                 </c:when>
 
                                 <c:when test="${o.orderStatus == 'CANCELLED'}">
@@ -184,7 +192,6 @@
                                 </c:when>
 
                                 <c:otherwise>
-                                    <!-- NẾU CHƯA XÁC NHẬN HOẶC ĐANG CHUẨN BỊ THÌ HIỆN NÚT THEO DÕI VÀ NÚT HỦY ĐƠN -->
                                     <button class="btn-shopee-outline btn-track" data-id="${o.id}" data-status="${o.orderStatus}" data-bs-toggle="modal" data-bs-target="#trackingModal">Tiến độ</button>
                                     <button class="btn btn-outline-danger btn-sm fw-medium px-4 py-2" data-bs-toggle="modal" data-bs-target="#cancelOrderModal${o.id}">Hủy đơn</button>
                                 </c:otherwise>
@@ -193,7 +200,7 @@
                     </div>
                 </div>
 
-                <!-- MODAL HỦY ĐƠN (SHOPEE STYLE) -->
+                <!-- MODAL HỦY ĐƠN (Giữ nguyên) -->
                 <div class="modal fade" id="cancelOrderModal${o.id}" tabindex="-1">
                     <div class="modal-dialog modal-dialog-centered">
                         <div class="modal-content border-0 rounded-4">
@@ -226,7 +233,6 @@
                                         <input class="form-check-input" type="radio" name="reasonType" value="Khác" id="r4_${o.id}">
                                         <label class="form-check-label fw-medium text-dark" for="r4_${o.id}">Lý do khác</label>
                                     </div>
-                                    <!-- Ô nhập text sẽ tự hiện khi chọn "Lý do khác" -->
                                     <textarea class="form-control mt-2 d-none" id="otherReason${o.id}" name="reasonOther" rows="2" placeholder="Nhập lý do của bạn (bắt buộc)..."></textarea>
                                 </div>
                                 <div class="modal-footer border-top-0 pt-0">
@@ -255,33 +261,48 @@
     </div>
 </div>
 
-<!-- Modal Rating Động -->
+<!-- MODAL ĐÁNH GIÁ ĐÃ FIX: CHUẨN ENCTYPE & SAO TƯƠNG TÁC CSS -->
 <div class="modal fade" id="ratingModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content rounded-4 border-0 shadow">
-            <div class="modal-header border-bottom">
-                <h5 class="fw-bold m-0">Đánh giá đơn hàng <span id="rateModalOrderTitle" class="text-success"></span></h5>
+            <div class="modal-header border-bottom-0 pb-0 mt-2 mx-2">
+                <h5 class="fw-bold m-0 brand-font">Đánh giá đơn hàng <span id="rateModalOrderTitle" class="text-success"></span></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form action="${pageContext.request.contextPath}/review" method="POST">
-                <div class="modal-body p-4">
+
+            <!-- Đã thêm enctype="multipart/form-data" -->
+            <form action="${pageContext.request.contextPath}/review" method="POST" enctype="multipart/form-data">
+                <div class="modal-body p-4 pt-2">
                     <input type="hidden" name="orderId" id="ratingOrderId" value="">
-                    <input type="hidden" name="productId" value="0">
-                    <h6 class="text-center fw-bold">Trải nghiệm mua sắm của bạn thế nào?</h6>
-                    <div class="star-rating" id="starContainer">
-                        <i class="ph-fill ph-star" data-value="1"></i>
-                        <i class="ph-fill ph-star" data-value="2"></i>
-                        <i class="ph-fill ph-star" data-value="3"></i>
-                        <i class="ph-fill ph-star" data-value="4"></i>
-                        <i class="ph-fill ph-star" data-value="5"></i>
+                    <!-- Nhận đúng Product ID từ JS -->
+                    <input type="hidden" name="productId" id="ratingProductId" value="">
+
+                    <p class="text-center fw-medium mb-3 text-dark">Trải nghiệm mua sắm của bạn thế nào?</p>
+
+                    <!-- HTML SAO TƯƠNG TÁC -->
+                    <div class="rating-stars mb-1">
+                        <input type="radio" name="rating" id="star5" value="5" required checked><label for="star5" class="ph-fill ph-star"></label>
+                        <input type="radio" name="rating" id="star4" value="4"><label for="star4" class="ph-fill ph-star"></label>
+                        <input type="radio" name="rating" id="star3" value="3"><label for="star3" class="ph-fill ph-star"></label>
+                        <input type="radio" name="rating" id="star2" value="2"><label for="star2" class="ph-fill ph-star"></label>
+                        <input type="radio" name="rating" id="star1" value="1"><label for="star1" class="ph-fill ph-star"></label>
                     </div>
-                    <input type="hidden" name="ratingValue" id="ratingInput" value="5">
-                    <div class="text-center text-warning fw-bold mb-4" id="ratingText">Tuyệt vời</div>
-                    <textarea name="comment" class="form-control rounded-3" rows="4" placeholder="Hãy chia sẻ nhận xét của bạn về đơn hàng này nhé..." required></textarea>
+                    <div id="ratingText">Tuyệt vời</div>
+
+                    <div class="mt-4 mb-3">
+                        <textarea name="comment" class="form-control rounded-3" rows="4" placeholder="Sản phẩm tươi ngon chứ? Bạn có hài lòng không?" required></textarea>
+                    </div>
+
+                    <!-- Ô Đính Kèm File Ảnh/Video -->
+                    <div class="mb-4">
+                        <label class="form-label fw-medium text-muted" style="font-size: 13px;"><i class="ph-bold ph-camera me-1"></i> Thêm Ảnh/Video (Tùy chọn)</label>
+                        <input type="file" name="mediaFile" class="form-control" accept="image/*,video/mp4,video/quicktime">
+                    </div>
                 </div>
-                <div class="modal-footer border-top p-3 bg-light rounded-bottom-4">
+
+                <div class="modal-footer border-0 p-3 bg-light rounded-bottom-4">
                     <button type="button" class="btn btn-light border fw-medium px-4" data-bs-dismiss="modal">Trở lại</button>
-                    <button type="submit" class="btn-shopee-primary m-0">Gửi đánh giá</button>
+                    <button type="submit" class="btn btn-success fw-bold px-4" style="background-color: var(--primary);">Gửi đánh giá</button>
                 </div>
             </form>
         </div>
@@ -305,7 +326,7 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function() {
-    // Xử lý Tabs trạng thái
+    // 1. TABS
     const tabs = document.querySelectorAll('.tab-item');
     const cards = document.querySelectorAll('.order-card');
     tabs.forEach(tab => {
@@ -321,7 +342,7 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     });
 
-    // Tracking Modal Logic
+    // 2. TRACKING MODAL
     document.getElementById('trackingModal').addEventListener('show.bs.modal', function (event) {
         const button = event.relatedTarget;
         document.getElementById('modalOrderId').innerText = '#DH' + button.getAttribute('data-id');
@@ -336,34 +357,37 @@ document.addEventListener("DOMContentLoaded", function() {
         document.getElementById('modalTrackingBody').innerHTML = html;
     });
 
-    // Rating Modal Logic
+    // 3. RATING MODAL (Nạp đúng OrderID và ProductID)
     document.getElementById('ratingModal').addEventListener('show.bs.modal', function (event) {
         const button = event.relatedTarget;
         const orderId = button.getAttribute('data-order');
+        const productId = button.getAttribute('data-product');
+
         document.getElementById('ratingOrderId').value = orderId;
+        document.getElementById('ratingProductId').value = productId;
         document.getElementById('rateModalOrderTitle').innerText = '#DH' + orderId;
     });
 
-    const stars = document.querySelectorAll('#starContainer i');
-    const ratingInput = document.getElementById('ratingInput');
-    const ratingText = document.getElementById('ratingText');
-    const texts = ['Tệ', 'Không hài lòng', 'Bình thường', 'Hài lòng', 'Tuyệt vời'];
+    // 4. JS TEXT RATING SAO TƯƠNG TÁC
+    const texts = { 1: "Rất tệ", 2: "Kém", 3: "Bình thường", 4: "Tốt", 5: "Tuyệt vời" };
+    const ratingTextStatus = document.getElementById('ratingText');
 
-    function highlightStars(value) {
-        stars.forEach(s => s.classList.toggle('active', s.getAttribute('data-value') <= value));
-    }
-    highlightStars(5);
-    stars.forEach(star => {
-        star.addEventListener('mouseover', function() { highlightStars(this.getAttribute('data-value')); });
-        star.parentElement.addEventListener('mouseleave', function() { highlightStars(ratingInput.value); });
-        star.addEventListener('click', function() {
-            ratingInput.value = this.getAttribute('data-value');
-            highlightStars(ratingInput.value);
-            ratingText.textContent = texts[ratingInput.value - 1];
+    document.querySelectorAll('.rating-stars label').forEach(label => {
+        label.addEventListener('mouseover', function() {
+            let val = this.previousElementSibling.value;
+            ratingTextStatus.innerText = texts[val];
+        });
+        label.addEventListener('mouseleave', function() {
+            let checkedVal = document.querySelector('.rating-stars input:checked').value;
+            ratingTextStatus.innerText = texts[checkedVal];
+        });
+        label.addEventListener('click', function() {
+            let val = this.previousElementSibling.value;
+            ratingTextStatus.innerText = texts[val];
         });
     });
 
-    // Bật/tắt ô nhập lý do Khác trong Modal Hủy đơn
+    // 5. LÝ DO HỦY ĐƠN KHÁC
     document.addEventListener('change', function(e) {
         if (e.target.name === 'reasonType') {
             const orderId = e.target.id.split('_')[1];
@@ -378,7 +402,7 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     });
 
-    // Kích hoạt Toast
+    // TOAST INITIALIZE
     var toastList = [].slice.call(document.querySelectorAll('.toast')).map(function(toastEl) { return new bootstrap.Toast(toastEl, { delay: 3000 }); });
     toastList.forEach(toast => toast.show());
 });
