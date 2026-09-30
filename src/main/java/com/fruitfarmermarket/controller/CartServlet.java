@@ -4,7 +4,6 @@ import com.fruitfarmermarket.dao.ProductDAO;
 import com.fruitfarmermarket.dao.OrderDAO;
 import com.fruitfarmermarket.dao.VoucherDAO;
 import com.fruitfarmermarket.model.CartItem;
-import com.fruitfarmermarket.model.GiftBasketCartItem; // Kéo model giỏ quà vào
 import com.fruitfarmermarket.model.Product;
 import com.fruitfarmermarket.model.OrderDetail;
 import com.fruitfarmermarket.model.Voucher;
@@ -69,7 +68,6 @@ public class CartServlet extends HttpServlet {
 
         try {
             if ("apply_voucher".equals(action)) {
-                // (Giữ nguyên logic Voucher)
                 if (user == null) {
                     session.setAttribute("errorMsg", "Khách hàng đăng nhập hoặc liên kết Google để nhận ưu đãi từ Voucher này nhé!");
                     response.sendRedirect(request.getContextPath() + "/cart");
@@ -137,23 +135,33 @@ public class CartServlet extends HttpServlet {
             if ("clear".equals(action)) {
                 cart.clear();
             } else if ("remove_basket".equals(action)) {
-
-                // FIX LOGIC XÓA GIỎ QUÀ SẠCH SẼ VỚI INSTANCEOF
                 String basketSessionId = request.getParameter("basketSessionId");
-                cart.removeIf(item -> item instanceof GiftBasketCartItem && basketSessionId.equals(((GiftBasketCartItem) item).getBasketSessionId()));
+                // ĐÃ FIX: Sử dụng dummy method an toàn
+                cart.removeIf(item -> basketSessionId.equals(item.getBasketSessionId()));
                 session.setAttribute("successMsg", "Đã hủy Giỏ quà tùy chỉnh.");
-
             } else {
                 int productId = Integer.parseInt(request.getParameter("id"));
                 switch (action) {
                     case "add":
-                        int quantityToAdd = Integer.parseInt(request.getParameter("quantity"));
-                        addToCart(cart, productId, quantityToAdd, request);
+                        double quantityToAdd = Double.parseDouble(request.getParameter("quantity"));
+                        if (quantityToAdd < 0.5) {
+                            session.setAttribute("errorMsg", "Số lượng đặt mua tối thiểu là 0.5 kg");
+                        } else if (quantityToAdd > 50.0) {
+                            session.setAttribute("errorMsg", "Đơn hàng cá nhân không được vượt quá 50 kg (vui lòng liên hệ sỉ)");
+                        } else {
+                            addToCart(cart, productId, quantityToAdd, request);
+                        }
                         break;
+
                     case "update":
-                        int newQuantity = Integer.parseInt(request.getParameter("quantity"));
-                        updateCart(cart, productId, newQuantity, request);
+                        double newQuantity = Double.parseDouble(request.getParameter("quantity"));
+                        if (newQuantity > 50.0) {
+                            session.setAttribute("errorMsg", "Đơn hàng cá nhân không được vượt quá 50 kg (vui lòng liên hệ sỉ)");
+                        } else {
+                            updateCart(cart, productId, newQuantity, request);
+                        }
                         break;
+
                     case "remove":
                         cart.removeIf(item -> item.getProduct() != null && item.getProduct().getId() == productId);
                         session.setAttribute("successMsg", "Đã xóa sản phẩm khỏi giỏ hàng.");
@@ -162,7 +170,7 @@ public class CartServlet extends HttpServlet {
             }
         } catch (Exception e) {
             e.printStackTrace();
-            session.setAttribute("errorMsg", "Có lỗi xảy ra, vui lòng thử lại!");
+            session.setAttribute("errorMsg", "Khối lượng mua phải là định dạng số dương hợp lệ");
         }
 
         session.setAttribute("cart", cart);
@@ -176,13 +184,13 @@ public class CartServlet extends HttpServlet {
         }
     }
 
-    private void addToCart(List<CartItem> cart, int productId, int quantityToAdd, HttpServletRequest request) {
+    private void addToCart(List<CartItem> cart, int productId, double quantityToAdd, HttpServletRequest request) {
         Product product = productDAO.getProductById(productId);
         if (product == null || product.getStock() <= 0) return;
 
         for (CartItem item : cart) {
             if (item.getProduct() != null && item.getProduct().getId() == productId) {
-                int newQty = item.getQuantity() + quantityToAdd;
+                double newQty = item.getQuantity() + quantityToAdd;
                 if (newQty > product.getStock()) {
                     request.getSession().setAttribute("errorMsg", "Không đủ số lượng tồn kho!");
                     return;
@@ -199,7 +207,7 @@ public class CartServlet extends HttpServlet {
         }
     }
 
-    private void updateCart(List<CartItem> cart, int productId, int newQuantity, HttpServletRequest request) {
+    private void updateCart(List<CartItem> cart, int productId, double newQuantity, HttpServletRequest request) {
         Product product = productDAO.getProductById(productId);
         if (product == null) return;
 

@@ -3,6 +3,7 @@ package com.fruitfarmermarket.controller;
 import com.fruitfarmermarket.dao.OrderDAO;
 import com.fruitfarmermarket.dao.UserDAO;
 import com.fruitfarmermarket.dao.ProductDAO;
+import com.fruitfarmermarket.dao.SettingDAO; // BỔ SUNG
 import com.fruitfarmermarket.model.CartItem;
 import com.fruitfarmermarket.model.GiftBasketCartItem;
 import com.fruitfarmermarket.model.Order;
@@ -19,12 +20,14 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map; // BỔ SUNG
 
 @WebServlet("/checkout")
 public class CheckoutServlet extends HttpServlet {
     private OrderDAO orderDAO = new OrderDAO();
     private UserDAO userDAO = new UserDAO();
     private ProductDAO productDAO = new ProductDAO();
+    private SettingDAO settingDAO = new SettingDAO(); // BỔ SUNG DAO ĐỂ LẤY CẤU HÌNH
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
@@ -43,6 +46,10 @@ public class CheckoutServlet extends HttpServlet {
             request.getRequestDispatcher("/view/user/checkout-options.jsp").forward(request, response);
             return;
         }
+
+        // BỔ SUNG: LẤY CẤU HÌNH HỆ THỐNG GỬI RA GIAO DIỆN
+        Map<String, String> settings = settingDAO.getAllSettings();
+        request.setAttribute("settings", settings);
 
         request.setAttribute("isGuest", (user == null));
         request.getRequestDispatcher("/view/user/checkout.jsp").forward(request, response);
@@ -67,13 +74,20 @@ public class CheckoutServlet extends HttpServlet {
         String paymentMethod = request.getParameter("paymentMethod");
         boolean usePoints = Boolean.parseBoolean(request.getParameter("usePoints"));
 
+        // Lấy thông tin Phương thức giao hàng & Tiền ship từ Form
         String deliveryTime = request.getParameter("deliveryTime");
+        String shippingType = request.getParameter("shippingType"); // STANDARD HOẶC EXPRESS
         String shippingFeeStr = request.getParameter("shippingFee");
         BigDecimal shippingFee = (shippingFeeStr != null && !shippingFeeStr.isEmpty()) ? new BigDecimal(shippingFeeStr) : BigDecimal.ZERO;
 
         String finalNote = "";
         if (deliveryTime != null && !deliveryTime.isEmpty()) finalNote = "Giờ nhận: " + deliveryTime + " | ";
         if (rawNote != null && !rawNote.isEmpty()) finalNote += rawNote;
+
+        // Bổ sung ghi chú Loại vận chuyển cho Shipper
+        if ("EXPRESS".equals(shippingType)) {
+            finalNote = "[GIAO HỎA TỐC 2H] " + finalNote;
+        }
 
         Order order = new Order();
         order.setUserId(user != null ? user.getId() : 0);
@@ -86,15 +100,13 @@ public class CheckoutServlet extends HttpServlet {
         // 1. LÀM PHẲNG GIỎ HÀNG & TÍNH TỒN KHO
         // ==========================================
         BigDecimal totalAmount = BigDecimal.ZERO;
-        List<CartItem> flatCartForDb = new ArrayList<>(); // Danh sách chỉ chứa Sản Phẩm Thực Tế để lưu Database
-        StringBuilder bundleNotes = new StringBuilder(); // Trích xuất phụ kiện ghi vào Note
+        List<CartItem> flatCartForDb = new ArrayList<>();
+        StringBuilder bundleNotes = new StringBuilder();
 
         for (CartItem item : cart) {
-            // Xử lý nhánh Đa hình: Giỏ Quà Mix
             if (item instanceof GiftBasketCartItem) {
                 GiftBasketCartItem giftBasket = (GiftBasketCartItem) item;
 
-                // Quét từng trái cây thực tế bên trong giỏ xem kho còn đủ không
                 for (CartItem fruitItem : giftBasket.getFruitItems()) {
                     Product dbProduct = productDAO.getProductById(fruitItem.getProduct().getId());
                     if (dbProduct == null || dbProduct.getStock() < fruitItem.getQuantity()) {
@@ -102,24 +114,18 @@ public class CheckoutServlet extends HttpServlet {
                         response.sendRedirect(request.getContextPath() + "/cart");
                         return;
                     }
-                    fruitItem.setProduct(dbProduct); // Cập nhật giá mới nhất
+                    fruitItem.setProduct(dbProduct);
                 }
 
-                // Cộng tổng bill (đã bao gồm vỏ, trang trí từ hàm Override)
                 totalAmount = totalAmount.add(giftBasket.getSubtotal());
-
-                // Chuyển toàn bộ trái cây thực tế sang danh sách DB để trừ kho và lưu OrderDetail
                 flatCartForDb.addAll(giftBasket.getFruitItems());
 
-                // Ghi chú phụ kiện vào đơn cho Nhân viên kho biết đường đóng gói
                 bundleNotes.append("\n[GIỎ MIX YÊU CẦU: Vỏ ").append(giftBasket.getBasket().getName())
                         .append(" | Phụ kiện: ").append(giftBasket.getDecoration().getName()).append("]");
                 if (giftBasket.getCardMessage() != null && !giftBasket.getCardMessage().isEmpty()) {
                     bundleNotes.append(" - Ghi thiệp: '").append(giftBasket.getCardMessage()).append("'");
                 }
-            }
-            // Xử lý nhánh Đa hình: Mua Lẻ Bình Thường
-            else {
+            } else {
                 Product dbProduct = productDAO.getProductById(item.getProduct().getId());
                 if (dbProduct == null || dbProduct.getStock() < item.getQuantity()) {
                     session.setAttribute("errorMsg", "Sản phẩm " + item.getProduct().getName() + " không đủ số lượng trong kho.");
@@ -128,19 +134,26 @@ public class CheckoutServlet extends HttpServlet {
                 }
                 item.setProduct(dbProduct);
                 totalAmount = totalAmount.add(item.getSubtotal());
-
-                // Thêm thẳng vào DB
                 flatCartForDb.add(item);
             }
         }
 
-        // Chốt Ghi chú cuối cùng lưu DB
         order.setNote(finalNote + bundleNotes.toString());
 
-        totalAmount = totalAmount.add(shippingFee);
+        // TÍNH TOÁN THUẾ VAT TỪ BẢNG SETTINGS (MỚI)
+        Map<String, String> settings = settingDAO.getAllSettings();
+        String taxRateStr = settings.get("TAX_RATE");
+        BigDecimal taxRate = (taxRateStr != null) ? new BigDecimal(taxRateStr).divide(new BigDecimal(100)) : BigDecimal.ZERO;
+        BigDecimal taxFee = totalAmount.multiply(taxRate); // Tiền thuế = Tạm tính * Thuế suất
+
+        // Cộng dồn Phí Ship & Thuế
+        totalAmount = totalAmount.add(shippingFee).add(taxFee);
+
+        // Trừ mã giảm giá (Nếu có)
         BigDecimal discount = (BigDecimal) session.getAttribute("discountAmount");
         if (discount != null) totalAmount = totalAmount.subtract(discount);
 
+        // Trừ điểm thưởng (Nếu có dùng)
         int pointsUsed = 0;
         if (usePoints && user != null && user.getRewardPoints() > 0) {
             pointsUsed = Math.min(user.getRewardPoints(), totalAmount.intValue());
@@ -149,11 +162,14 @@ public class CheckoutServlet extends HttpServlet {
 
         if (totalAmount.compareTo(BigDecimal.ZERO) < 0) totalAmount = BigDecimal.ZERO;
         order.setTotalAmount(totalAmount);
+        order.setShippingType(shippingType);
+        order.setShippingFee(shippingFee);
+        order.setTaxFee(taxFee);
 
-        // Lưu đơn hàng với danh sách đã làm phẳng, loại bỏ vật phẩm ảo.
         int orderId = orderDAO.createOrder(order, flatCartForDb);
 
         if (orderId > 0) {
+
             if (pointsUsed > 0 && user != null) {
                 userDAO.deductRewardPoints(user.getId(), pointsUsed);
                 user.setRewardPoints(user.getRewardPoints() - pointsUsed);
@@ -170,11 +186,7 @@ public class CheckoutServlet extends HttpServlet {
             session.setAttribute("lastPaymentMethod", paymentMethod);
             session.setAttribute("successMsg", "Đặt hàng thành công!");
 
-            if ("VIETQR".equals(paymentMethod)) {
-                response.sendRedirect(request.getContextPath() + "/checkout-success");
-            } else {
-                response.sendRedirect(request.getContextPath() + "/checkout-success");
-            }
+            response.sendRedirect(request.getContextPath() + "/checkout-success");
         } else {
             session.setAttribute("errorMsg", "Có lỗi xảy ra khi lưu đơn, vui lòng kiểm tra lại thông tin!");
             String redirectUrl = request.getContextPath() + "/checkout";

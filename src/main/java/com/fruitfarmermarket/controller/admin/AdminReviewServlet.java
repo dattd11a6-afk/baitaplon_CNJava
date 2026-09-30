@@ -14,7 +14,17 @@ public class AdminReviewServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        List<Review> reviews = reviewDAO.getAllReviewsForAdmin();
+        // Hứng tham số bộ lọc từ UI
+        String type = request.getParameter("type");
+        String stars = request.getParameter("stars");
+
+        // Đẩy tham số ngược lại JSP để Active các nút lọc
+        request.setAttribute("currentType", type != null ? type : "all");
+        request.setAttribute("currentStars", stars);
+
+        // Gọi hàm DAO MỚI có Filter
+        List<Review> reviews = reviewDAO.getFilteredReviewsForAdmin(type, stars);
+
         request.setAttribute("reviews", reviews);
         request.getRequestDispatcher("/view/admin/reviews.jsp").forward(request, response);
     }

@@ -36,6 +36,7 @@ public class AdminProductServlet extends HttpServlet {
                 showForm(request, response, null);
                 break;
             case "edit":
+                // ĐÃ SỬA: Trả lại ID về kiểu int chuẩn
                 int id = Integer.parseInt(request.getParameter("id"));
                 Product product = productDAO.getProductById(id);
                 showForm(request, response, product);
@@ -66,13 +67,11 @@ public class AdminProductServlet extends HttpServlet {
             else {
                 Product p = new Product();
 
-                // Ép kiểu ID an toàn
                 String idStr = request.getParameter("id");
                 if (idStr != null && !idStr.isEmpty()) {
                     p.setId(Integer.parseInt(idStr));
                 }
 
-                // Lấy dữ liệu Text
                 p.setName(request.getParameter("name"));
                 p.setDescription(request.getParameter("description"));
                 p.setUnit(request.getParameter("unit"));
@@ -80,7 +79,6 @@ public class AdminProductServlet extends HttpServlet {
                 p.setStatus(request.getParameter("status"));
                 p.setImage(request.getParameter("image"));
 
-                // Ép kiểu Số an toàn (Tránh NumberFormatException gây lỗi không thêm được)
                 String catIdStr = request.getParameter("categoryId");
                 p.setCategoryId((catIdStr != null && !catIdStr.isEmpty()) ? Integer.parseInt(catIdStr) : 0);
 
@@ -88,7 +86,8 @@ public class AdminProductServlet extends HttpServlet {
                 p.setPrice((priceStr != null && !priceStr.isEmpty()) ? new BigDecimal(priceStr) : BigDecimal.ZERO);
 
                 String stockStr = request.getParameter("stock");
-                p.setStock((stockStr != null && !stockStr.isEmpty()) ? Integer.parseInt(stockStr) : 0);
+                // ĐÃ SỬA: Dùng Double.parseDouble cho Tồn kho để tránh lỗi NumberFormatException
+                p.setStock((stockStr != null && !stockStr.isEmpty()) ? Double.parseDouble(stockStr) : 0.0);
 
                 // Thực thi DB
                 if (p.getId() == 0) {
@@ -106,7 +105,7 @@ public class AdminProductServlet extends HttpServlet {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace(); // In lỗi ra console để debug thay vì giấu đi
+            e.printStackTrace();
             session.setAttribute("errorMsg", "Dữ liệu nhập vào không hợp lệ!");
         }
 

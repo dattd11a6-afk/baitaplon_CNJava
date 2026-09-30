@@ -1,14 +1,18 @@
 package com.fruitfarmermarket.model;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 public class CartItem {
     private Product product;
-    private int quantity;
+
+    // đổi sang double để tính số cân thập phân
+    private double quantity;
 
     public CartItem() {}
 
-    public CartItem(Product product, int quantity) {
+    // HÀM KHỞI TẠO QUAN TRỌNG: Tham số số 2 phải là double
+    public CartItem(Product product, double quantity) {
         this.product = product;
         this.quantity = quantity;
     }
@@ -16,15 +20,9 @@ public class CartItem {
     public Product getProduct() { return product; }
     public void setProduct(Product product) { this.product = product; }
 
-    public int getQuantity() { return quantity; }
-    public void setQuantity(int quantity) { this.quantity = quantity; }
-
-    // --- FIX LỖI ĐA HÌNH EL ---
-    // Khai báo hàm ảo để JSP có thể gọi ${item.basketSessionId} an toàn mà không bị lỗi PropertyNotFound
-    // Lớp con GiftBasketCartItem sẽ tự động ghi đè (override) hàm này và trả về chuỗi ID thật.
-    public String getBasketSessionId() {
-        return null;
-    }
+    // Đã sửa hàm get/set thành double
+    public double getQuantity() { return quantity; }
+    public void setQuantity(double quantity) { this.quantity = quantity; }
 
     public BigDecimal getSubtotal() {
         if (this.product == null || this.product.getPrice() == null) {
@@ -32,4 +30,8 @@ public class CartItem {
         }
         return this.product.getPrice().multiply(BigDecimal.valueOf(this.quantity));
     }
+
+    // Dummy methods cho Đa hình Giỏ Quà
+    public String getBasketSessionId() { return null; }
+    public List<CartItem> getFruitItems() { return null; }
 }

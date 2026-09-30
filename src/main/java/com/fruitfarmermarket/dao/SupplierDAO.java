@@ -26,7 +26,9 @@ public class SupplierDAO {
                 s.setCreatedAt(rs.getTimestamp("created_at"));
                 list.add(s);
             }
-        } catch (SQLException e) { e.printStackTrace(); }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
         return list;
     }
 
@@ -39,34 +41,40 @@ public class SupplierDAO {
             ps.setString(4, s.getEmail());
             ps.setString(5, s.getStatus() != null ? s.getStatus() : "ACTIVE");
             return ps.executeUpdate() > 0;
-        } catch (SQLException e) { e.printStackTrace(); return false; }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 
-    public boolean updateSupplier(Supplier s) {
-        String sql = "UPDATE suppliers SET name=?, phone=?, address=?, email=?, status=? WHERE id=?";
-        try (Connection conn = DBConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, s.getName());
-            ps.setString(2, s.getPhone());
-            ps.setString(3, s.getAddress());
-            ps.setString(4, s.getEmail());
-            ps.setString(5, s.getStatus());
-            ps.setInt(6, s.getId());
+    // FIX 1: Thêm trường email vào câu SQL Update
+    public boolean updateSupplier(Supplier supplier) {
+        String sql = "UPDATE suppliers SET name = ?, phone = ?, email = ?, address = ?, status = ? WHERE id = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, supplier.getName());
+            ps.setString(2, supplier.getPhone());
+            ps.setString(3, supplier.getEmail()); // Đã bổ sung
+            ps.setString(4, supplier.getAddress());
+            ps.setString(5, supplier.getStatus());
+            ps.setInt(6, supplier.getId());
             return ps.executeUpdate() > 0;
-        } catch (SQLException e) { e.printStackTrace(); return false; }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 
-    // Xóa thông minh: Thử xóa cứng, nếu vướng khóa ngoại thì chuyển sang xóa mềm (INACTIVE)
+    // FIX 2: Đổi từ XÓA CỨNG (DELETE) -> XÓA MỀM tránh lỗi lỗi Foreign Key
     public boolean deleteSupplier(int id) {
-        String sqlDelete = "DELETE FROM suppliers WHERE id = ?";
-        try (Connection conn = DBConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sqlDelete)) {
+        String sql = "UPDATE suppliers SET status = 'INACTIVE' WHERE id = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, id);
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
-            String sqlSoftDelete = "UPDATE suppliers SET status = 'INACTIVE' WHERE id = ?";
-            try (Connection conn2 = DBConnection.getConnection(); PreparedStatement ps2 = conn2.prepareStatement(sqlSoftDelete)) {
-                ps2.setInt(1, id);
-                return ps2.executeUpdate() > 0;
-            } catch (SQLException ex) { ex.printStackTrace(); return false; }
+            e.printStackTrace();
+            return false;
         }
     }
 }

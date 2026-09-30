@@ -7,6 +7,7 @@ public class StaffDTO {
     private String email;
     private String phone;
     private String password;
+    private  String role;
     private String status;
     private Timestamp createdAt;
 
@@ -32,4 +33,7 @@ public class StaffDTO {
 
     public Timestamp getCreatedAt() { return createdAt; }
     public void setCreatedAt(Timestamp createdAt) { this.createdAt = createdAt; }
+
+    public String getRole() {return role; }
+    public void setRole(String role) { this.role = role; }
 }

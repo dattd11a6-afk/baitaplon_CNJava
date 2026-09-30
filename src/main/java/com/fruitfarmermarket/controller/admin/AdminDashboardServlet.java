@@ -15,8 +15,6 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -24,6 +22,8 @@ import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.HashMap;
 
 @WebServlet("/admin/dashboard")
 public class AdminDashboardServlet extends HttpServlet {
@@ -42,9 +42,8 @@ public class AdminDashboardServlet extends HttpServlet {
         String compareText = "kỳ trước";
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
-        // XỬ LÝ LỊCH CUSTOM (GG CALENDAR STYLE)
         if ("custom".equals(period)) {
-            String dates = request.getParameter("custom_dates"); // Format: dd/MM/yyyy to dd/MM/yyyy
+            String dates = request.getParameter("custom_dates");
             if (dates != null && dates.contains(" to ")) {
                 String[] parts = dates.split(" to ");
                 LocalDate start = LocalDate.parse(parts[0], formatter);
@@ -70,35 +69,83 @@ public class AdminDashboardServlet extends HttpServlet {
         request.setAttribute("compareText", compareText);
         request.setAttribute("currentRangeText", range.getCurrentStart().format(formatter) + " – " + range.getCurrentEnd().format(formatter));
 
-        // CÁC HÀM XỬ LÝ DATA
-        DashboardSummaryDTO summary = reportDAO.getDashboardSummary(range);
-        request.setAttribute("summary", summary);
+        try {
+            DashboardSummaryDTO summary = reportDAO.getDashboardSummary(range);
+            if (summary == null) summary = new DashboardSummaryDTO();
+            request.setAttribute("summary", summary);
 
-        // Data mới cho 2 biểu đồ tách biệt và Top 5 ngang
-        request.setAttribute("trendData", dashboardDAO.getTrendData(range.getCurrentStart(), range.getCurrentEnd()));
-        request.setAttribute("topProductsBar", dashboardDAO.getTopProductsBarChart(range.getCurrentStart(), range.getCurrentEnd()));
+            // Gán data an toàn
+            request.setAttribute("trendData", dashboardDAO.getTrendData(range.getCurrentStart(), range.getCurrentEnd()));
+            request.setAttribute("topProductsBar", dashboardDAO.getTopProductsBarChart(range.getCurrentStart(), range.getCurrentEnd()));
 
-        // Channel Data (Giữ nguyên cấu trúc cũ)
-        BigDecimal webRev = BigDecimal.ZERO, storeRev = BigDecimal.ZERO;
-        int webOrders = 0, storeOrders = 0;
-        String sqlChannel = "SELECT order_source, SUM(total_amount) as rev, COUNT(id) as cnt FROM orders WHERE order_status = 'COMPLETED' AND DATE(created_at) BETWEEN ? AND ? GROUP BY order_source";
-        try (Connection conn = DBConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sqlChannel)) {
-            ps.setDate(1, java.sql.Date.valueOf(range.getCurrentStart())); ps.setDate(2, java.sql.Date.valueOf(range.getCurrentEnd()));
-            try (ResultSet rs = ps.executeQuery()) {
-                while(rs.next()) {
-                    if("WEBSITE".equals(rs.getString("order_source"))) { webRev = rs.getBigDecimal("rev"); webOrders = rs.getInt("cnt"); }
-                    else if("STORE".equals(rs.getString("order_source"))) { storeRev = rs.getBigDecimal("rev"); storeOrders = rs.getInt("cnt"); }
+            // TÍNH TOÁN DOANH THU THEO KÊNH BÁN HÀNG (Sửa ở đây theo yêu cầu)
+            double websiteRev = 0, storeRev = 0;
+            String sqlSource = "SELECT order_source, SUM(total_amount) as rev FROM orders WHERE order_status = 'COMPLETED' AND DATE(created_at) BETWEEN ? AND ? GROUP BY order_source";
+            try (Connection conn = DBConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sqlSource)) {
+                ps.setDate(1, java.sql.Date.valueOf(range.getCurrentStart()));
+                ps.setDate(2, java.sql.Date.valueOf(range.getCurrentEnd()));
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        String source = rs.getString("order_source");
+                        if ("WEBSITE".equalsIgnoreCase(source)) {
+                            websiteRev = rs.getDouble("rev");
+                        } else if ("STORE".equalsIgnoreCase(source)) {
+                            storeRev = rs.getDouble("rev");
+                        }
+                    }
                 }
+            } catch (SQLException e) { e.printStackTrace(); }
+
+            double totalSourceRev = websiteRev + storeRev;
+            if (totalSourceRev > 0) {
+                request.setAttribute("websitePercent", Math.round((websiteRev / totalSourceRev) * 100));
+                request.setAttribute("storePercent", Math.round((storeRev / totalSourceRev) * 100));
+            } else {
+                request.setAttribute("websitePercent", 0);
+                request.setAttribute("storePercent", 0);
             }
-        } catch (SQLException e) { e.printStackTrace(); }
+            request.setAttribute("websiteRev", websiteRev);
+            request.setAttribute("storeRev", storeRev);
 
-        BigDecimal totalRev = summary.getCurrentRevenue();
-        request.setAttribute("webRev", webRev); request.setAttribute("storeRev", storeRev);
-        request.setAttribute("webPct", totalRev.compareTo(BigDecimal.ZERO) > 0 ? webRev.doubleValue() / totalRev.doubleValue() * 100 : 0);
-        request.setAttribute("storePct", totalRev.compareTo(BigDecimal.ZERO) > 0 ? storeRev.doubleValue() / totalRev.doubleValue() * 100 : 0);
+            // TÍNH TOÁN TRẠNG THÁI ĐƠN HÀNG ĐỂ VẼ BIỂU ĐỒ VÒNG (MỚI)
+            int pending = 0, confirmed = 0, preparing = 0, shipping = 0, completed = 0, cancelled = 0;
+            String sqlStatus = "SELECT order_status, COUNT(id) as cnt FROM orders WHERE DATE(created_at) BETWEEN ? AND ? GROUP BY order_status";
+            try (Connection conn = DBConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sqlStatus)) {
+                ps.setDate(1, java.sql.Date.valueOf(range.getCurrentStart()));
+                ps.setDate(2, java.sql.Date.valueOf(range.getCurrentEnd()));
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        String st = rs.getString("order_status");
+                        int c = rs.getInt("cnt");
+                        if ("PENDING".equals(st)) pending = c;
+                        else if ("CONFIRMED".equals(st)) confirmed = c;
+                        else if ("PREPARING".equals(st)) preparing = c;
+                        else if ("SHIPPING".equals(st)) shipping = c;
+                        else if ("COMPLETED".equals(st)) completed = c;
+                        else if ("CANCELLED".equals(st)) cancelled = c;
+                    }
+                }
+            } catch (SQLException e) { e.printStackTrace(); }
 
-        request.setAttribute("lowStockProducts", productDAO.getLowStockProducts(10, 5));
-        request.setAttribute("pendingOrdersCount", reportDAO.getOrderCountByStatus("PENDING"));
+            request.setAttribute("stPending", pending);
+            request.setAttribute("stConfirmed", confirmed);
+            request.setAttribute("stPreparing", preparing);
+            request.setAttribute("stShipping", shipping);
+            request.setAttribute("stCompleted", completed);
+            request.setAttribute("stCancelled", cancelled);
+
+            // Bổ sung dữ liệu
+            request.setAttribute("recentOrders", orderDAO.getRecentOrders(5));
+            request.setAttribute("lowStockProducts", productDAO.getLowStockProducts(10, 5));
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            request.setAttribute("summary", new DashboardSummaryDTO());
+            request.setAttribute("trendData", new HashMap<>());
+            request.setAttribute("topProductsBar", new ArrayList<>());
+            request.setAttribute("recentOrders", new ArrayList<>());
+            request.setAttribute("lowStockProducts", new ArrayList<>());
+        }
 
         request.getRequestDispatcher("/view/admin/dashboard.jsp").forward(request, response);
     }

@@ -12,7 +12,7 @@ import java.util.List;
 
 public class AttendanceDAO {
 
-    // Lấy thông tin chấm công ngày HÔM NAY của 1 nhân viên
+    // Lấy thông tin chấm công ngày hôm nay của 1 nhân viên
     public Attendance getAttendanceToday(int staffId) {
         Attendance att = null;
         String sql = "SELECT * FROM attendance WHERE staff_id = ? AND work_date = CURRENT_DATE()";

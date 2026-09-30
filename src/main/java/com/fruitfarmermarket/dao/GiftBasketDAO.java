@@ -14,9 +14,7 @@ import java.util.List;
 
 public class GiftBasketDAO {
 
-    // ==========================================
-    // 1. QUẢN LÝ VỎ GIỎ (BASKETS)
-    // ==========================================
+    // quản lý giỏ quà
     public List<Basket> getActiveBaskets() {
         List<Basket> list = new ArrayList<>();
         String sql = "SELECT * FROM baskets WHERE status = 'ACTIVE'";

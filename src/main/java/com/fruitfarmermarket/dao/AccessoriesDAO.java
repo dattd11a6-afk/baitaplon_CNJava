@@ -1,16 +1,15 @@
 package com.fruitfarmermarket.dao;
 
-import com.fruitfarmermarket.model.Accessory;
+import com.fruitfarmermarket.model.Accessories;
 import com.fruitfarmermarket.utils.DBConnection;
 
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public class AccessoryDAO {
+public class AccessoriesDAO {
 
-    public AccessoryDAO() {
-        // TỰ ĐỘNG TẠO BẢNG NẾU CHƯA CÓ TRONG DB (Không cần tự chạy SQL)
+    public AccessoriesDAO() {
         String createTableSQL = "CREATE TABLE IF NOT EXISTS accessories (" +
                 "id INT AUTO_INCREMENT PRIMARY KEY, " +
                 "type VARCHAR(50), name VARCHAR(255), price DECIMAL(10,2), " +
@@ -20,14 +19,14 @@ public class AccessoryDAO {
         } catch (SQLException e) { e.printStackTrace(); }
     }
 
-    public List<Accessory> getAccessoriesByType(String type) {
-        List<Accessory> list = new ArrayList<>();
+    public List<Accessories> getAccessoriesByType(String type) {
+        List<Accessories> list = new ArrayList<>();
         String sql = "SELECT * FROM accessories WHERE type = ? AND status = 'ACTIVE' ORDER BY id DESC";
         try (Connection conn = DBConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, type);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    Accessory a = new Accessory();
+                    Accessories a = new Accessories();
                     a.setId(rs.getInt("id"));
                     a.setType(rs.getString("type"));
                     a.setName(rs.getString("name"));
@@ -40,7 +39,7 @@ public class AccessoryDAO {
         return list;
     }
 
-    public void addAccessory(Accessory a) {
+    public void addAccessory(Accessories a) {
         String sql = "INSERT INTO accessories (type, name, price, image, status) VALUES (?, ?, ?, ?, 'ACTIVE')";
         try (Connection conn = DBConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, a.getType()); ps.setString(2, a.getName());

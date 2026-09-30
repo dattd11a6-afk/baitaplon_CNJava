@@ -18,8 +18,6 @@ public class GiftBasketCartItem extends CartItem {
         this.setQuantity(1); // Mặc định một cấu hình giỏ quà là 1 bộ
     }
 
-    // --- CÁC HÀM GHI ĐÈ (OVERRIDE) ĐỂ QUA MẶT HỆ THỐNG CŨ ---
-
     @Override
     public Product getProduct() {
         // Tạo một sản phẩm "ảo" để hiển thị trên màn hình Giỏ Hàng (Cart) và Thanh Toán (Checkout)

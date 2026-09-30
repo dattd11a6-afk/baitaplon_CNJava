@@ -31,7 +31,8 @@ public class UserDAO {
                     user.setRole(rs.getString("role"));
                     user.setStatus(rs.getString("status"));
                     user.setCreatedAt(rs.getTimestamp("created_at"));
-                    user.setRewardPoints(rs.getInt("reward_points")); // Nạp điểm thưởng từ DB
+                    user.setRewardPoints(rs.getInt("reward_points"));
+                    user.setAvatar(rs.getString("avatar"));
                 }
             }
         } catch (SQLException e) { e.printStackTrace(); }
@@ -74,6 +75,7 @@ public class UserDAO {
                     u.setAddress(rs.getString("address"));
                     u.setRole(rs.getString("role"));
                     u.setRewardPoints(rs.getInt("reward_points"));
+                    u.setAvatar(rs.getString("avatar"));
                     list.add(u);
                 }
             }
@@ -82,6 +84,7 @@ public class UserDAO {
 
     public User getUserByEmail(String email) {
         String sql = "SELECT * FROM users WHERE email = ?";
+        // ĐÃ FIX: Thêm conn. trước prepareStatement
         try (Connection conn = DBConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, email);
             try (ResultSet rs = ps.executeQuery()) {
@@ -117,9 +120,6 @@ public class UserDAO {
         } catch (SQLException e) { e.printStackTrace(); } return false;
     }
 
-    // =========================================
-    // HÀM XỬ LÝ ĐIỂM THƯỞNG KHI THANH TOÁN
-    // =========================================
     public boolean deductRewardPoints(int userId, int pointsToDeduct) {
         String sql = "UPDATE users SET reward_points = reward_points - ? WHERE id = ? AND reward_points >= ?";
         try (Connection conn = DBConnection.getConnection();
@@ -130,5 +130,39 @@ public class UserDAO {
             return ps.executeUpdate() > 0;
         } catch (SQLException e) { e.printStackTrace(); }
         return false;
+    }
+
+    // ==========================================================
+    // HÀM DÀNH RIÊNG CHO LUỒNG CẬP NHẬT PROFILE CỦA STAFF
+    // ==========================================================
+    public boolean updateStaffProfile(User user, boolean isUpdatePassword) {
+        String sql = "UPDATE users SET full_name = ?, email = ?, phone = ?, address = ?, avatar = ? WHERE id = ?";
+
+        if (isUpdatePassword) {
+            sql = "UPDATE users SET full_name = ?, email = ?, phone = ?, address = ?, avatar = ?, password = ? WHERE id = ?";
+        }
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, user.getFullName());
+            ps.setString(2, user.getEmail());
+            ps.setString(3, user.getPhone());
+            ps.setString(4, user.getAddress());
+            ps.setString(5, user.getAvatar());
+
+            if (isUpdatePassword) {
+                ps.setString(6, user.getPassword()); // Pass đã được mã hóa ở Servlet
+                ps.setInt(7, user.getId());
+            } else {
+                ps.setInt(6, user.getId());
+            }
+
+            return ps.executeUpdate() > 0;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 }

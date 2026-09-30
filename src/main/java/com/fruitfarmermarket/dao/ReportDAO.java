@@ -17,10 +17,6 @@ import java.util.Map;
 
 public class ReportDAO {
 
-    // =========================================================================
-    // PHẦN 1: CÁC HÀM NÂNG CẤP CHO ADMIN DASHBOARD MỚI (PHASE 1)
-    // =========================================================================
-
     public DashboardSummaryDTO getDashboardSummary(DateRange range) {
         DashboardSummaryDTO dto = new DashboardSummaryDTO();
 

@@ -44,7 +44,7 @@ public class ShipperDAO {
                 o.setPaymentStatus(rs.getString("payment_status"));
                 o.setOrderStatus(rs.getString("order_status"));
                 o.setNote(rs.getString("note"));
-                o.setCancelReason(rs.getString("cancel_reason")); // Đã map với cột lý do hủy
+                o.setCancelReason(rs.getString("cancel_reason"));
                 o.setCreatedAt(rs.getTimestamp("created_at"));
                 list.add(o);
             }
@@ -54,34 +54,72 @@ public class ShipperDAO {
         return list;
     }
 
-    // Cập nhật trạng thái giao hàng dựa trên Action (ACCEPT, COMPLETED, CANCEL)
+    // Cập nhật trạng thái giao hàng VÀ Hoàn kho tự động nếu Hủy đơn
     public boolean updateDeliveryStatus(int orderId, String action, String reason) {
-        String sql = "";
+        Connection conn = null;
+        try {
+            conn = DBConnection.getConnection();
 
-        if ("ACCEPT".equals(action)) {
-            // Shipper nhận đơn -> Trạng thái đổi thành Đang giao
-            sql = "UPDATE orders SET order_status = 'SHIPPING' WHERE id = ?";
-        } else if ("COMPLETED".equals(action)) {
-            // Giao thành công -> Hoàn thành + Đã thanh toán (như logic cũ)
-            sql = "UPDATE orders SET order_status = 'COMPLETED', payment_status = 'PAID' WHERE id = ?";
-        } else if ("CANCEL".equals(action)) {
-            // Khách không nhận hàng -> Hủy + Lưu lại lý do
-            sql = "UPDATE orders SET order_status = 'CANCELLED', cancel_reason = ? WHERE id = ?";
-        }
-
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            // Nếu là thao tác Hủy, truyền thêm tham số lý do vào vị trí index 1
+            // LOGIC 1: KHÁCH BOOM HÀNG -> HỦY ĐƠN & HOÀN KHO (Cần Transaction)
             if ("CANCEL".equals(action)) {
-                ps.setString(1, reason);
-                ps.setInt(2, orderId);
-            } else {
-                ps.setInt(1, orderId);
+                conn.setAutoCommit(false); // Bắt đầu Transaction
+
+                // 1. Cập nhật trạng thái Order thành CANCELLED và lưu lý do
+                String sqlUpdateOrder = "UPDATE orders SET order_status = 'CANCELLED', cancel_reason = ? WHERE id = ?";
+                try (PreparedStatement psOrder = conn.prepareStatement(sqlUpdateOrder)) {
+                    psOrder.setString(1, reason);
+                    psOrder.setInt(2, orderId);
+                    if (psOrder.executeUpdate() == 0) {
+                        conn.rollback();
+                        return false; // Lỗi cập nhật đơn
+                    }
+                }
+
+                // 2. Hoàn lại số lượng tồn kho cho từng sản phẩm trong đơn
+                String sqlGetDetails = "SELECT product_id, quantity FROM order_details WHERE order_id = ?";
+                String sqlRestoreStock = "UPDATE products SET stock = stock + ? WHERE id = ?";
+
+                try (PreparedStatement psGetDetails = conn.prepareStatement(sqlGetDetails);
+                     PreparedStatement psRestoreStock = conn.prepareStatement(sqlRestoreStock)) {
+
+                    psGetDetails.setInt(1, orderId);
+                    try (ResultSet rs = psGetDetails.executeQuery()) {
+                        while (rs.next()) {
+                            psRestoreStock.setInt(1, rs.getInt("quantity"));
+                            psRestoreStock.setInt(2, rs.getInt("product_id"));
+                            psRestoreStock.addBatch(); // Gom lệnh lại cho tối ưu hiệu suất
+                        }
+                        psRestoreStock.executeBatch();
+                    }
+                }
+
+                conn.commit(); // Chốt lưu Transaction
+                return true;
             }
-            return ps.executeUpdate() > 0;
+            // LOGIC 2: NHẬN ĐƠN (ACCEPT) HOẶC GIAO THÀNH CÔNG (COMPLETED)
+            else {
+                String sql = "";
+                if ("ACCEPT".equals(action)) {
+                    sql = "UPDATE orders SET order_status = 'SHIPPING' WHERE id = ?";
+                } else if ("COMPLETED".equals(action)) {
+                    sql = "UPDATE orders SET order_status = 'COMPLETED', payment_status = 'PAID' WHERE id = ?";
+                }
+
+                try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                    ps.setInt(1, orderId);
+                    return ps.executeUpdate() > 0;
+                }
+            }
+
         } catch (SQLException e) {
             e.printStackTrace();
+            if (conn != null) {
+                try { conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
+            }
+        } finally {
+            if (conn != null) {
+                try { conn.setAutoCommit(true); conn.close(); } catch (SQLException e) { e.printStackTrace(); }
+            }
         }
         return false;
     }

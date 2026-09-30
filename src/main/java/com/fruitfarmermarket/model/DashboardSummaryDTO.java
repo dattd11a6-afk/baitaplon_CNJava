@@ -16,8 +16,6 @@ public class DashboardSummaryDTO {
     private int currentCustomers = 0;
     private int previousCustomers = 0;
 
-    // --- HÀM TÍNH TOÁN TỰ ĐỘNG --- //
-
     // Tính AOV (Giá trị đơn trung bình)
     public BigDecimal getCurrentAov() {
         if (currentOrders == 0) return BigDecimal.ZERO;
@@ -39,12 +37,21 @@ public class DashboardSummaryDTO {
         return calculateGrowth(currentOrders, previousOrders);
     }
 
+    // Tính % Tăng trưởng Khách hàng
+    public double getCustomersGrowth() {
+        return calculateGrowth(currentCustomers, previousCustomers);
+    }
+
+    // Tính % Tăng trưởng AOV (MỚI THÊM)
+    public double getAovGrowth() {
+        return calculateGrowth(getCurrentAov().doubleValue(), getPreviousAov().doubleValue());
+    }
+
     private double calculateGrowth(double current, double previous) {
         if (previous == 0) return current > 0 ? 100.0 : 0.0;
         return ((current - previous) / previous) * 100.0;
     }
 
-    // --- GETTERS & SETTERS CƠ BẢN --- //
     public BigDecimal getCurrentRevenue() { return currentRevenue; }
     public void setCurrentRevenue(BigDecimal currentRevenue) { this.currentRevenue = currentRevenue; }
     public BigDecimal getPreviousRevenue() { return previousRevenue; }

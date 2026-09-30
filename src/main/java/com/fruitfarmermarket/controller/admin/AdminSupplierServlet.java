@@ -14,8 +14,7 @@ public class AdminSupplierServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        request.setAttribute("suppliers", supplierDAO.getAllSuppliersAdmin());
-        request.getRequestDispatcher("/view/admin/suppliers.jsp").forward(request, response);
+        response.sendRedirect(request.getContextPath() + "/admin/inventory");
     }
 
     @Override
@@ -27,29 +26,44 @@ public class AdminSupplierServlet extends HttpServlet {
         try {
             if ("delete".equals(action)) {
                 int id = Integer.parseInt(request.getParameter("id"));
-                if (supplierDAO.deleteSupplier(id)) session.setAttribute("successMsg", "Đã xóa nhà cung cấp!");
-                else session.setAttribute("errorMsg", "Lỗi khi xóa nhà cung cấp!");
+
+                // THỰC HIỆN XÓA MỀM (Chuyển sang INACTIVE)
+                if (supplierDAO.deleteSupplier(id)) {
+                    session.setAttribute("successMsg", "Đã ngừng hợp tác và ẩn nhà cung cấp!");
+                } else {
+                    session.setAttribute("errorMsg", "Lỗi khi cập nhật trạng thái!");
+                }
             } else {
                 Supplier s = new Supplier();
                 s.setName(request.getParameter("name"));
                 s.setPhone(request.getParameter("phone"));
-                s.setEmail(request.getParameter("email"));
+                s.setEmail(request.getParameter("email")); // FIX RƠI EMAIL
                 s.setAddress(request.getParameter("address"));
-                s.setStatus(request.getParameter("status"));
+
+                // FIX TRẠNG THÁI (Lấy từ Form, nếu ko có thì lấy ACTIVE)
+                String status = request.getParameter("status");
+                s.setStatus(status != null && !status.isEmpty() ? status : "ACTIVE");
 
                 if ("add".equals(action)) {
-                    if (supplierDAO.insertSupplier(s)) session.setAttribute("successMsg", "Thêm nhà cung cấp thành công!");
-                    else session.setAttribute("errorMsg", "Lỗi khi thêm nhà cung cấp!");
+                    if (supplierDAO.insertSupplier(s)) {
+                        session.setAttribute("successMsg", "Thêm nhà cung cấp mới thành công!");
+                    } else {
+                        session.setAttribute("errorMsg", "Lỗi khi lưu nhà cung cấp!");
+                    }
                 } else if ("update".equals(action)) {
                     s.setId(Integer.parseInt(request.getParameter("id")));
-                    if (supplierDAO.updateSupplier(s)) session.setAttribute("successMsg", "Cập nhật thành công!");
-                    else session.setAttribute("errorMsg", "Lỗi khi cập nhật!");
+                    if (supplierDAO.updateSupplier(s)) {
+                        session.setAttribute("successMsg", "Cập nhật hồ sơ nhà cung cấp thành công!");
+                    } else {
+                        session.setAttribute("errorMsg", "Lỗi khi lưu cập nhật!");
+                    }
                 }
             }
         } catch (Exception e) {
             session.setAttribute("errorMsg", "Dữ liệu không hợp lệ!");
+            e.printStackTrace();
         }
 
-        response.sendRedirect(request.getContextPath() + "/admin/suppliers");
+        response.sendRedirect(request.getContextPath() + "/admin/inventory");
     }
 }

@@ -1,7 +1,7 @@
 package com.fruitfarmermarket.controller;
 
 import com.fruitfarmermarket.dao.ProductDAO;
-import com.fruitfarmermarket.dao.AccessoryDAO;
+import com.fruitfarmermarket.dao.AccessoriesDAO;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -13,16 +13,16 @@ import java.io.IOException;
 public class HomeServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        System.out.println("========== HOMESERVLET ĐÃ hoạt động==========");
+        System.out.println("Server Tomcat đang hoạt động......");
         try {
             // bắt lỗi
             ProductDAO productDAO = new ProductDAO();
-            AccessoryDAO accessoryDAO = new AccessoryDAO();
+            AccessoriesDAO accessoriesDAO = new AccessoriesDAO();
 
             request.setAttribute("featuredProducts", productDAO.getFeaturedProducts(8));
-            request.setAttribute("baskets", accessoryDAO.getAccessoriesByType("BASKET"));
-            request.setAttribute("decorations", accessoryDAO.getAccessoriesByType("DECORATION"));
-            request.setAttribute("packagings", accessoryDAO.getAccessoriesByType("PACKAGING"));
+            request.setAttribute("baskets", accessoriesDAO.getAccessoriesByType("BASKET"));
+            request.setAttribute("decorations", accessoriesDAO.getAccessoriesByType("DECORATION"));
+            request.setAttribute("packagings", accessoriesDAO.getAccessoriesByType("PACKAGING"));
 
             request.getRequestDispatcher("/index.jsp").forward(request, response);
         } catch (Exception e) {

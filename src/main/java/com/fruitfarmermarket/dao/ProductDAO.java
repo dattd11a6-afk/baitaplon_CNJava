@@ -13,7 +13,6 @@ import java.util.List;
 
 public class ProductDAO {
 
-    // CÁC HÀM DÀNH CHO TRANG KHÁCH HÀNG
     public List<Product> getProducts(String keyword, Integer categoryId, BigDecimal minPrice, BigDecimal maxPrice, String sort, int page, int pageSize) {
         List<Product> list = new ArrayList<>();
         List<Object> params = new ArrayList<>();
@@ -66,11 +65,9 @@ public class ProductDAO {
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql.toString())) {
-
             for (int i = 0; i < params.size(); i++) {
                 ps.setObject(i + 1, params.get(i));
             }
-
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     list.add(mapResultSetToProduct(rs));
@@ -87,10 +84,7 @@ public class ProductDAO {
         List<Object> params = new ArrayList<>();
 
         StringBuilder sql = new StringBuilder(
-                "SELECT COUNT(p.id) " +
-                        "FROM products p " +
-                        "JOIN categories c ON p.category_id = c.id " +
-                        "WHERE p.status = 'ACTIVE' AND c.status = 'ACTIVE'"
+                "SELECT COUNT(p.id) FROM products p JOIN categories c ON p.category_id = c.id WHERE p.status = 'ACTIVE' AND c.status = 'ACTIVE'"
         );
 
         if (keyword != null && !keyword.trim().isEmpty()) {
@@ -115,15 +109,11 @@ public class ProductDAO {
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql.toString())) {
-
             for (int i = 0; i < params.size(); i++) {
                 ps.setObject(i + 1, params.get(i));
             }
-
             try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    total = rs.getInt(1);
-                }
+                if (rs.next()) total = rs.getInt(1);
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -134,10 +124,8 @@ public class ProductDAO {
     public Product getProductById(int id) {
         Product product = null;
         String sql = "SELECT p.*, c.name AS category_name FROM products p JOIN categories c ON p.category_id = c.id WHERE p.id = ? AND p.status = 'ACTIVE'";
-
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-
             ps.setInt(1, id);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
@@ -152,14 +140,17 @@ public class ProductDAO {
 
     private Product mapResultSetToProduct(ResultSet rs) throws SQLException {
         Product p = new Product();
-        p.setId(rs.getInt("id"));
+        p.setId(rs.getInt("id")); // Fix: ID luôn là Int
         p.setCategoryId(rs.getInt("category_id"));
         p.setCategoryName(rs.getString("category_name"));
         p.setName(rs.getString("name"));
         p.setDescription(rs.getString("description"));
         p.setPrice(rs.getBigDecimal("price"));
         p.setUnit(rs.getString("unit"));
-        p.setStock(rs.getInt("stock"));
+
+        // ĐÃ KHẮC PHỤC LỖI TẠI DÒNG 162
+        p.setStock(rs.getDouble("stock"));
+
         p.setImage(rs.getString("image"));
         p.setOrigin(rs.getString("origin"));
         p.setStatus(rs.getString("status"));
@@ -168,14 +159,9 @@ public class ProductDAO {
         return p;
     }
 
-    // ==========================================
-    // CÁC HÀM DÀNH RIÊNG CHO ADMIN (CRUD)
-    // ==========================================
-
     public List<Product> getAllProductsForAdmin() {
         List<Product> list = new ArrayList<>();
         String sql = "SELECT p.*, c.name AS category_name FROM products p JOIN categories c ON p.category_id = c.id ORDER BY p.created_at DESC";
-
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
@@ -197,7 +183,7 @@ public class ProductDAO {
             ps.setString(3, p.getDescription());
             ps.setBigDecimal(4, p.getPrice());
             ps.setString(5, p.getUnit());
-            ps.setInt(6, p.getStock());
+            ps.setDouble(6, p.getStock());
             ps.setString(7, p.getImage());
             ps.setString(8, p.getOrigin());
             ps.setString(9, p.getStatus());
@@ -217,7 +203,7 @@ public class ProductDAO {
             ps.setString(3, p.getDescription());
             ps.setBigDecimal(4, p.getPrice());
             ps.setString(5, p.getUnit());
-            ps.setInt(6, p.getStock());
+            ps.setDouble(6, p.getStock());
             ps.setString(7, p.getImage());
             ps.setString(8, p.getOrigin());
             ps.setString(9, p.getStatus());
@@ -241,16 +227,13 @@ public class ProductDAO {
         return false;
     }
 
-    // HÀM MỚI: XÓA SẢN PHẨM THÔNG MINH
     public boolean deleteProduct(int id) {
-        // Thử xóa cứng khỏi Database
         String sqlDelete = "DELETE FROM products WHERE id = ?";
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sqlDelete)) {
             ps.setInt(1, id);
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
-            // Lỗi khóa ngoại (đã có hóa đơn mua sản phẩm này) -> Chuyển sang Xóa mềm
             return disableProduct(id);
         }
     }
@@ -270,10 +253,9 @@ public class ProductDAO {
         } catch (SQLException e) { e.printStackTrace(); }
         return list;
     }
-    // Lấy danh sách sản phẩm nổi bật (mới nhất) cho Trang chủ
+
     public List<Product> getFeaturedProducts(int limit) {
         List<Product> list = new ArrayList<>();
-        // Lấy các sản phẩm mới nhất dựa vào ID giảm dần
         String sql = "SELECT * FROM products ORDER BY id DESC LIMIT ?";
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -286,8 +268,8 @@ public class ProductDAO {
                     p.setPrice(rs.getBigDecimal("price"));
                     p.setImage(rs.getString("image"));
                     p.setUnit(rs.getString("unit"));
-                    p.setStock(rs.getInt("stock"));
-                    // Nếu có cột origin, description... thì bác có thể get thêm
+                    // ĐÃ KHẮC PHỤC LỖI TẠI DÒNG 284
+                    p.setStock(rs.getDouble("stock"));
                     list.add(p);
                 }
             }
@@ -296,12 +278,9 @@ public class ProductDAO {
         }
         return list;
     }
-    // ==========================================
-    // HÀM MỚI: DÀNH RIÊNG CHO MODULE MIX GIỎ QUÀ
-    // ==========================================
+
     public List<Product> getActiveProducts() {
         List<Product> list = new ArrayList<>();
-        // Chỉ lấy sản phẩm có trạng thái ACTIVE và số lượng tồn kho > 0
         String sql = "SELECT p.*, c.name AS category_name FROM products p JOIN categories c ON p.category_id = c.id WHERE p.status = 'ACTIVE' AND p.stock > 0 ORDER BY p.name ASC";
 
         try (Connection conn = DBConnection.getConnection();
@@ -311,6 +290,83 @@ public class ProductDAO {
                 list.add(mapResultSetToProduct(rs));
             }
         } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    public List<Product> searchProducts(String keyword) {
+        List<Product> list = new ArrayList<>();
+        String sql = "SELECT p.*, c.name AS category_name FROM products p " +
+                "JOIN categories c ON p.category_id = c.id " +
+                "WHERE p.status = 'ACTIVE' AND (p.name LIKE ? OR p.description LIKE ? OR p.origin LIKE ?)";
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            String searchPattern = "%" + keyword.trim() + "%";
+            ps.setString(1, searchPattern);
+            ps.setString(2, searchPattern);
+            ps.setString(3, searchPattern);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    list.add(mapResultSetToProduct(rs));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    public List<Product> getFilteredProducts(String category, String[] origins, String priceRange, String sortOption) {
+        List<Product> list = new ArrayList<>();
+        StringBuilder sql = new StringBuilder(
+                "SELECT p.*, c.name AS category_name FROM products p " +
+                        "JOIN categories c ON p.category_id = c.id WHERE p.status = 'ACTIVE' "
+        );
+
+        if (category != null && !category.isEmpty()) {
+            if (category.equals("nhapkhau")) sql.append(" AND c.name LIKE '%nhập khẩu%' ");
+            else if (category.equals("vietnam")) sql.append(" AND c.name LIKE '%Việt Nam%' ");
+            else if (category.equals("huuco")) sql.append(" AND c.name LIKE '%hữu cơ%' ");
+            else if (category.equals("muavum")) sql.append(" AND (c.name LIKE '%mùa%' OR c.name LIKE '%Mùa%') ");
+            else if (category.equals("combo")) sql.append(" AND (c.name LIKE '%Combo%' OR c.name LIKE '%Giỏ%') ");
+        }
+
+        if (origins != null && origins.length > 0) {
+            sql.append(" AND (");
+            for (int i = 0; i < origins.length; i++) {
+                sql.append("p.origin = '").append(origins[i]).append("'");
+                if (i < origins.length - 1) sql.append(" OR ");
+            }
+            sql.append(") ");
+        }
+
+        if ("under500".equals(priceRange)) {
+            sql.append(" AND p.price < 500000 ");
+        } else if ("500to1000".equals(priceRange)) {
+            sql.append(" AND p.price >= 500000 AND p.price <= 1000000 ");
+        } else if ("over1000".equals(priceRange)) {
+            sql.append(" AND p.price > 1000000 ");
+        }
+
+        if ("priceAsc".equals(sortOption)) {
+            sql.append(" ORDER BY p.price ASC");
+        } else if ("priceDesc".equals(sortOption)) {
+            sql.append(" ORDER BY p.price DESC");
+        } else if ("nameAsc".equals(sortOption)) {
+            sql.append(" ORDER BY p.name ASC");
+        } else {
+            sql.append(" ORDER BY p.id DESC");
+        }
+
+        try (java.sql.Connection conn = com.fruitfarmermarket.utils.DBConnection.getConnection();
+             java.sql.PreparedStatement ps = conn.prepareStatement(sql.toString());
+             java.sql.ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                list.add(mapResultSetToProduct(rs));
+            }
+        } catch (java.sql.SQLException e) {
             e.printStackTrace();
         }
         return list;

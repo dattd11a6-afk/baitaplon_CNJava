@@ -15,7 +15,7 @@
     <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/css/style.css">
     <style>
         .cart-item-img { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; background: #F4F7F1; padding: 5px; }
-        .qty-input { width: 50px; text-align: center; border: 1px solid var(--border-light); border-radius: 4px; padding: 4px; }
+        .qty-input { width: 60px; text-align: center; border: 1px solid var(--border-light); border-radius: 4px; padding: 4px; }
         .qty-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         .hover-primary:hover { color: #2F6B3F !important; transition: 0.2s; }
         .navbar-brand { font-family: 'DM Sans', sans-serif; font-weight: 700; font-size: 24px; color: #2F6B3F !important; }
@@ -94,7 +94,7 @@
                                     <tbody style="border-top: 1px solid var(--border-light);">
                                         <c:forEach var="item" items="${sessionScope.cart}">
                                             <c:choose>
-                                                <%-- TRƯỜNG HỢP 1: LÀ GIỎ QUÀ MIX (Sử dụng cách kiểm tra an toàn theo Class) --%>
+                                                <%-- ĐÃ FIX BẢO MẬT: Bỏ item.class, dùng cơ chế Đa hình an toàn --%>
                                                 <c:when test="${not empty item.basketSessionId}">
                                                     <tr>
                                                         <td>
@@ -134,7 +134,7 @@
                                                                                 <li class="d-flex justify-content-between text-muted mb-2 pb-2 border-bottom border-light" style="font-size: 13px;">
                                                                                     <span>- ${fruit.product.name} <strong class="text-dark">(x${fruit.quantity})</strong></span>
                                                                                     <span class="fw-medium text-dark"><fmt:formatNumber value="${fruit.subtotal}" type="currency" currencySymbol="₫" maxFractionDigits="0"/></span>
-                                                                                </li>
+                                                                               </li>
                                                                             </c:forEach>
                                                                         </ul>
                                                                     </div>
@@ -167,16 +167,18 @@
                                                                 </c:choose>
                                                                 <div>
                                                                     <a href="${pageContext.request.contextPath}/product?id=${item.product.id}" class="text-dark fw-semibold text-decoration-none d-block">${item.product.name}</a>
-                                                                    <span class="text-muted" style="font-size: 12px;">Kho: ${item.product.stock}</span>
+                                                                    <span class="text-muted" style="font-size: 12px;">Kho: ${item.product.stock} ${item.product.unit}</span>
                                                                 </div>
                                                             </div>
                                                         </td>
-                                                        <td class="fw-medium text-dark"><fmt:formatNumber value="${item.product.price}" type="currency" currencySymbol="₫" maxFractionDigits="0"/></td>
+                                                        <td class="fw-medium text-dark"><fmt:formatNumber value="${item.product.price}" type="currency" currencySymbol="₫" maxFractionDigits="0"/> / ${item.product.unit}</td>
                                                         <td>
                                                             <form action="${pageContext.request.contextPath}/cart" method="POST" class="d-flex align-items-center gap-2">
                                                                 <input type="hidden" name="action" value="update">
                                                                 <input type="hidden" name="id" value="${item.product.id}">
-                                                                <input type="number" name="quantity" value="${item.quantity}" min="1" max="${item.product.stock}" class="qty-input" onchange="this.form.submit()">
+
+                                                                <!-- BƯỚC NHẢY 0.5 CHUẨN XÁC CHO MUA LẺ -->
+                                                                <input type="number" name="quantity" value="${item.quantity}" min="0.5" max="50.0" step="0.5" class="qty-input" onchange="this.form.submit()">
                                                             </form>
                                                         </td>
                                                         <td class="fw-bold text-success"><fmt:formatNumber value="${item.subtotal}" type="currency" currencySymbol="₫" maxFractionDigits="0"/></td>
@@ -234,20 +236,26 @@
         </c:choose>
     </div>
 
-    <!-- MODAL VOUCHER -->
+    <!-- MODAL VOUCHER KÈM LOGIC TỰ ĐỘNG ẨN MÃ HẾT HẠN/INACTIVE -->
     <div class="modal fade" id="voucherModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content rounded-4 border-0 shadow">
                 <div class="modal-header border-bottom pb-3"><h5 class="modal-title fw-bold text-dark"><i class="ph-fill ph-ticket text-warning me-2"></i>Chọn Voucher khả dụng</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
                 <div class="modal-body bg-light p-3" style="max-height: 500px;">
                     <form action="${pageContext.request.contextPath}/cart" method="POST" class="d-flex gap-2 mb-4"><input type="hidden" name="action" value="apply_voucher"><input type="text" name="voucherCode" class="form-control text-uppercase fw-bold border-success" placeholder="Hoặc nhập mã của bạn..." required><button type="submit" class="btn btn-success fw-bold px-4">Áp dụng</button></form>
+
+                    <!-- Khai báo lấy thời gian thực từ Server -->
+                    <jsp:useBean id="now" class="java.util.Date" />
+
                     <c:choose>
                         <c:when test="${empty availableVouchers}"><div class="text-center text-muted py-4">Hiện không có mã giảm giá nào.</div></c:when>
                         <c:otherwise>
                             <c:forEach var="v" items="${availableVouchers}">
-                                <c:if test="${v.status == 'ACTIVE'}">
+                                <!-- LỌC NGAY TẠI GIAO DIỆN: CHỈ HIỆN VOUCHER ACTIVE VÀ CÒN HẠN (Hoặc không có hạn) -->
+                                <c:if test="${v.status == 'ACTIVE' && (empty v.expiryDate || v.expiryDate.time >= now.time)}">
                                     <c:set var="totalLimit" value="${v.usageLimit + v.usedCount}" />
                                     <c:set var="percentUsed" value="${totalLimit > 0 ? (v.usedCount / totalLimit) * 100 : 0}" />
+
                                     <div class="voucher-ticket shadow-sm">
                                         <div class="voucher-icon-box"><i class="ph-fill ph-ticket fs-1"></i></div>
                                         <div class="p-3 flex-grow-1 bg-white" style="border-radius: 0 8px 8px 0;">

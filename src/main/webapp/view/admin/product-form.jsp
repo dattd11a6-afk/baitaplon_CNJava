@@ -26,11 +26,14 @@
 
         <div class="admin-card">
             <form action="${pageContext.request.contextPath}/admin/products" method="POST">
-                <input type="hidden" name="action" value="save">
-                <input type="hidden" name="id" value="${product.id}">
+                <!-- Không cần action="save" nữa, Servlet tự check ID -->
+                <input type="hidden" name="id" value="${product != null ? product.id : 0}">
 
                 <div class="row g-4">
-                    <div class="col-md-8"><label class="form-label">Tên trái cây <span class="text-danger">*</span></label><input type="text" class="form-control" name="name" value="${product.name}" required placeholder="VD: Táo Fuji Nhật Bản"></div>
+                    <div class="col-md-8">
+                        <label class="form-label">Tên trái cây <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="name" value="${product.name}" required placeholder="VD: Táo Fuji Nhật Bản">
+                    </div>
                     <div class="col-md-4">
                         <label class="form-label">Trạng thái</label>
                         <select class="form-select" name="status">
@@ -43,17 +46,37 @@
                         <label class="form-label">Danh mục <span class="text-danger">*</span></label>
                         <select class="form-select" name="categoryId" required>
                             <option value="">-- Chọn danh mục --</option>
-                            <c:forEach var="cat" items="${categories}"><option value="${cat.id}" ${product.categoryId == cat.id ? 'selected' : ''}>${cat.name}</option></c:forEach>
+                            <c:forEach var="cat" items="${categories}">
+                                <option value="${cat.id}" ${product.categoryId == cat.id ? 'selected' : ''}>${cat.name}</option>
+                            </c:forEach>
                         </select>
                     </div>
-                    <div class="col-md-4"><label class="form-label">Xuất xứ</label><input type="text" class="form-control" name="origin" value="${product.origin}"></div>
-                    <div class="col-md-4"><label class="form-label">Tên file ảnh</label><input type="text" class="form-control" name="image" value="${product.image}"></div>
+                    <div class="col-md-4">
+                        <label class="form-label">Xuất xứ</label>
+                        <input type="text" class="form-control" name="origin" value="${product.origin}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Link hoặc Tên File Ảnh</label>
+                        <input type="text" class="form-control" name="image" value="${product.image}" placeholder="VD: tao-envy.jpg">
+                    </div>
 
-                    <div class="col-md-4"><label class="form-label">Giá bán (VNĐ) <span class="text-danger">*</span></label><input type="number" class="form-control" name="price" value="${product.price}" required min="0"></div>
-                    <div class="col-md-4"><label class="form-label">Đơn vị tính <span class="text-danger">*</span></label><input type="text" class="form-control" name="unit" value="${product.unit != null ? product.unit : 'kg'}" required></div>
-                    <div class="col-md-4"><label class="form-label">Tồn kho ban đầu <span class="text-danger">*</span></label><input type="number" class="form-control" name="stock" value="${product.stock != null ? product.stock : 0}" required min="0"></div>
+                    <div class="col-md-4">
+                        <label class="form-label">Giá bán (VNĐ) <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" name="price" value="${product.price}" required min="0">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Đơn vị tính <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="unit" value="${product.unit != null ? product.unit : 'kg'}" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Tồn kho ban đầu <span class="text-danger">*</span></label>
+                        <input type="number" step="0.1" class="form-control" name="stock" value="${product.stock != null ? product.stock : 0}" required min="0">
+                    </div>
 
-                    <div class="col-12"><label class="form-label">Mô tả chi tiết</label><textarea class="form-control" name="description" rows="4">${product.description}</textarea></div>
+                    <div class="col-12">
+                        <label class="form-label">Mô tả chi tiết</label>
+                        <textarea class="form-control" name="description" rows="4">${product.description}</textarea>
+                    </div>
 
                     <div class="col-12 text-end mt-5 pt-3 border-top">
                         <a href="${pageContext.request.contextPath}/admin/products" class="btn btn-light border me-2 px-4">Hủy bỏ</a>
@@ -63,5 +86,28 @@
             </form>
         </div>
     </div>
+
+    <!-- BỔ SUNG TOAST ĐỂ HIỂN THỊ THÔNG BÁO LỖI NGAY TẠI TRANG FORM -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-4" style="z-index: 1100;">
+        <c:if test="${not empty sessionScope.errorMsg}">
+            <div class="toast align-items-center text-bg-danger border-0 shadow" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="d-flex">
+                    <div class="toast-body fw-medium d-flex align-items-center" style="font-size: 14px; padding: 12px 16px;">
+                        <i class="ph-fill ph-warning-circle me-2 fs-5"></i> ${sessionScope.errorMsg}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-3 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            </div>
+            <c:remove var="errorMsg" scope="session" />
+        </c:if>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            var ts = [].slice.call(document.querySelectorAll('.toast'));
+            ts.map(function(t) { return new bootstrap.Toast(t, { delay: 3500 }); }).forEach(t => t.show());
+        });
+    </script>
 </body>
 </html>

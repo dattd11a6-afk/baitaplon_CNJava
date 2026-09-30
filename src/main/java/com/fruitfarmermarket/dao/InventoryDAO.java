@@ -8,6 +8,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import com.fruitfarmermarket.model.GoodsReceipt;
+import com.fruitfarmermarket.model.GoodsReceiptDetail;
 
 public class InventoryDAO {
 
@@ -26,7 +28,9 @@ public class InventoryDAO {
                 map.put("address", rs.getString("address"));
                 list.add(map);
             }
-        } catch (SQLException e) { e.printStackTrace(); }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
         return list;
     }
 
@@ -82,6 +86,117 @@ public class InventoryDAO {
                     psDetail.executeBatch();
                     psStock.executeBatch();
                 }
+            }
+
+            conn.commit();
+            return true;
+        } catch (SQLException e) {
+            if (conn != null) try {
+                conn.rollback();
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+            }
+            e.printStackTrace();
+            return false;
+        } finally {
+            if (conn != null) try {
+                conn.setAutoCommit(true);
+                conn.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    // 1. LẤY TẤT CẢ PHIẾU NHẬP (Hiển thị bảng tổng)
+    public List<GoodsReceipt> getAllReceipts() {
+        List<GoodsReceipt> list = new ArrayList<>();
+        String sql = "SELECT r.id, s.name AS supplier_name, u.full_name AS user_name, r.total_amount, r.note, r.created_at " +
+                "FROM goods_receipts r " +
+                "LEFT JOIN suppliers s ON r.supplier_id = s.id " +
+                "LEFT JOIN users u ON r.user_id = u.id " +
+                "ORDER BY r.created_at DESC";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                GoodsReceipt gr = new GoodsReceipt();
+                gr.setId(rs.getInt("id"));
+                gr.setSupplierName(rs.getString("supplier_name"));
+                gr.setUserName(rs.getString("user_name"));
+                gr.setTotalAmount(rs.getDouble("total_amount"));
+                gr.setNote(rs.getString("note"));
+                gr.setCreatedAt(rs.getTimestamp("created_at"));
+                list.add(gr);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    // 2. LẤY CHI TIẾT 1 PHIẾU NHẬP (Hiển thị khi bấm nút "Xem chi tiết")
+    public List<GoodsReceiptDetail> getReceiptDetails(int receiptId) {
+        List<GoodsReceiptDetail> list = new ArrayList<>();
+        String sql = "SELECT p.name AS product_name, d.quantity, d.import_price, d.subtotal " +
+                "FROM goods_receipt_details d " +
+                "JOIN products p ON d.product_id = p.id " +
+                "WHERE d.receipt_id = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, receiptId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    GoodsReceiptDetail detail = new GoodsReceiptDetail();
+                    // ĐÃ SỬA: Không gọi detail.setId() nữa
+                    detail.setProductName(rs.getString("product_name"));
+                    detail.setQuantity(rs.getInt("quantity"));
+                    detail.setImportPrice(rs.getDouble("import_price"));
+                    detail.setSubtotal(rs.getDouble("subtotal"));
+                    list.add(detail);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+    // 3. XÓA PHIẾU NHẬP (Kèm logic tự động TRỪ LẠI TỒN KHO)
+    public boolean deleteGoodsReceipt(int receiptId) {
+        Connection conn = null;
+        String getDetailsSql = "SELECT product_id, quantity FROM goods_receipt_details WHERE receipt_id = ?";
+        String updateStockSql = "UPDATE products SET stock = stock - ? WHERE id = ?";
+        String deleteDetailsSql = "DELETE FROM goods_receipt_details WHERE receipt_id = ?";
+        String deleteReceiptSql = "DELETE FROM goods_receipts WHERE id = ?";
+
+        try {
+            conn = DBConnection.getConnection();
+            conn.setAutoCommit(false);
+
+            // 1. Quét các sản phẩm trong phiếu và trừ lại tồn kho
+            try (PreparedStatement psGet = conn.prepareStatement(getDetailsSql);
+                 PreparedStatement psStock = conn.prepareStatement(updateStockSql)) {
+                psGet.setInt(1, receiptId);
+                try (ResultSet rs = psGet.executeQuery()) {
+                    while (rs.next()) {
+                        psStock.setInt(1, rs.getInt("quantity"));
+                        psStock.setInt(2, rs.getInt("product_id"));
+                        psStock.addBatch();
+                    }
+                    psStock.executeBatch();
+                }
+            }
+
+            // 2. Xóa các dòng chi tiết phiếu
+            try (PreparedStatement psDelDetails = conn.prepareStatement(deleteDetailsSql)) {
+                psDelDetails.setInt(1, receiptId);
+                psDelDetails.executeUpdate();
+            }
+
+            // 3. Xóa phiếu nhập gốc
+            try (PreparedStatement psDelReceipt = conn.prepareStatement(deleteReceiptSql)) {
+                psDelReceipt.setInt(1, receiptId);
+                psDelReceipt.executeUpdate();
             }
 
             conn.commit();

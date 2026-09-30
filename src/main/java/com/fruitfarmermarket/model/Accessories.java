@@ -2,13 +2,14 @@ package com.fruitfarmermarket.model;
 
 import java.math.BigDecimal;
 
-public class Accessory {
+public class Accessories {
     private int id;
     private String type; // BASKET (Vỏ giỏ), DECORATION (Trang trí), PACKAGING (Đóng gói)
     private String name;
     private BigDecimal price;
     private String image;
     private String status;
+    private String Description;
 
     // Getters and Setters
     public int getId() { return id; }
@@ -23,4 +24,12 @@ public class Accessory {
     public void setImage(String image) { this.image = image; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+
+    public String getDescription() {
+        return Description;
+    }
+
+    public void setDescription(String description) {
+        Description = description;
+    }
 }

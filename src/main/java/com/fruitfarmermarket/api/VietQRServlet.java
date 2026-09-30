@@ -37,7 +37,7 @@ public class VietQRServlet extends HttpServlet {
 
         try {
             // Nội dung chuyển khoản: DH + Mã Đơn
-            String addInfo = "DH" + orderId;
+            String addInfo = "Chuyển khoản thanh toán DH" + orderId;
 
             // Mã hóa URL để tránh lỗi dấu cách hoặc ký tự đặc biệt trong Tên tài khoản
             String encodedAccountName = URLEncoder.encode(ACCOUNT_NAME, StandardCharsets.UTF_8.toString()).replace("+", "%20");

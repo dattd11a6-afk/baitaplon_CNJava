@@ -107,4 +107,62 @@ public class ReviewDAO {
         } catch (SQLException e) { e.printStackTrace(); }
         return false;
     }
+    // ==========================================
+    // HÀM MỚI BỔ SUNG CHO TRUNG TÂM HỖ TRỢ (ADMIN)
+    // ==========================================
+    public List<Review> getFilteredReviewsForAdmin(String type, String star) {
+        List<Review> list = new ArrayList<>();
+        StringBuilder sql = new StringBuilder(
+                "SELECT r.*, u.full_name, u.avatar, p.name AS product_name " +
+                        "FROM reviews r " +
+                        "JOIN users u ON r.user_id = u.id " +
+                        "JOIN products p ON r.product_id = p.id " +
+                        "WHERE 1=1 "
+        );
+
+        // Lọc theo Loại (Type)
+        if ("complaint".equals(type) || "warranty".equals(type)) {
+            // Khiếu nại/Bảo hành tạm định nghĩa là Đánh giá <= 2 sao để mô phỏng thực tế
+            sql.append("AND r.rating <= 2 ");
+        } else if ("review".equals(type)) {
+            sql.append("AND r.rating > 2 ");
+        } // "all" hoặc null thì không gán thêm WHERE
+
+        // Lọc theo số Sao (Star dropdown)
+        if (star != null && !star.isEmpty()) {
+            sql.append("AND r.rating = ? ");
+        }
+
+        sql.append("ORDER BY r.created_at DESC");
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+
+            if (star != null && !star.isEmpty()) {
+                ps.setInt(1, Integer.parseInt(star));
+            }
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Review r = new Review();
+                    r.setId(rs.getInt("id"));
+                    r.setUserId(rs.getInt("user_id"));
+                    r.setProductId(rs.getInt("product_id"));
+                    r.setOrderId(rs.getInt("order_id")); // Gọi orderId thật
+                    r.setRating(rs.getInt("rating"));
+                    r.setComment(rs.getString("comment"));
+                    r.setMediaUrl(rs.getString("media_url"));
+                    r.setSellerReply(rs.getString("seller_reply"));
+                    r.setCreatedAt(rs.getTimestamp("created_at"));
+                    r.setUserName(rs.getString("full_name"));
+                    r.setUserAvatar(rs.getString("avatar"));
+                    r.setProductName(rs.getString("product_name"));
+                    list.add(r);
+                }
+            }
+        } catch (SQLException | NumberFormatException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
 }

@@ -26,10 +26,19 @@ public class AdminInventoryServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        // Lấy danh sách Nhà cung cấp và Sản phẩm để hiển thị lên Form nhập
+        InventoryDAO inventoryDAO = new InventoryDAO();
+        ProductDAO productDAO = new ProductDAO();
+
+        // 1. Lấy data cho Tab "Nhà cung cấp" và Dropdown tạo phiếu
         request.setAttribute("suppliers", inventoryDAO.getAllSuppliers());
+
+        // 2. Lấy data cho Tab "Lịch sử nhập kho"
+        request.setAttribute("receipts", inventoryDAO.getAllReceipts());
+
+        // 3. Lấy data Sản phẩm cho Tab "Lập phiếu nhập"
         request.setAttribute("products", productDAO.getAllProductsForAdmin());
 
+        // Chuyển hướng sang file JSP Gộp
         request.getRequestDispatcher("/view/admin/inventory.jsp").forward(request, response);
     }
 
@@ -43,11 +52,29 @@ public class AdminInventoryServlet extends HttpServlet {
             return;
         }
 
+        String action = request.getParameter("action");
+
+        // LUỒNG 1: XÓA PHIẾU NHẬP
+        if ("deleteReceipt".equals(action)) {
+            try {
+                int receiptId = Integer.parseInt(request.getParameter("receiptId"));
+                if (inventoryDAO.deleteGoodsReceipt(receiptId)) {
+                    session.setAttribute("successMsg", "Đã xóa phiếu nhập và cập nhật lại tồn kho!");
+                } else {
+                    session.setAttribute("errorMsg", "Lỗi: Không thể xóa phiếu nhập này.");
+                }
+            } catch (Exception e) {
+                session.setAttribute("errorMsg", "Lỗi dữ liệu khi xóa!");
+            }
+            response.sendRedirect(request.getContextPath() + "/admin/inventory");
+            return;
+        }
+
+        // LUỒNG 2: THÊM MỚI PHIẾU NHẬP (Luồng cũ)
         try {
             int supplierId = Integer.parseInt(request.getParameter("supplierId"));
             String note = request.getParameter("note");
 
-            // Nhận mảng Dữ liệu Sản phẩm (Bao gồm nhiều ID, Số lượng, Giá nhập)
             String[] productIds = request.getParameterValues("productIds[]");
             String[] quantities = request.getParameterValues("quantities[]");
             String[] importPrices = request.getParameterValues("importPrices[]");
@@ -75,18 +102,16 @@ public class AdminInventoryServlet extends HttpServlet {
                 totalAmount = totalAmount.add(importPrice.multiply(new BigDecimal(quantity)));
             }
 
-            // Gọi DAO tạo phiếu nhập và cộng kho
             if (inventoryDAO.createGoodsReceipt(supplierId, admin.getId(), totalAmount, note, details)) {
                 session.setAttribute("successMsg", "Nhập kho thành công! Số lượng sản phẩm đã được cộng dồn.");
             } else {
                 session.setAttribute("errorMsg", "Lỗi CSDL khi nhập kho!");
             }
-
         } catch (Exception e) {
             e.printStackTrace();
             session.setAttribute("errorMsg", "Dữ liệu nhập vào không hợp lệ!");
         }
 
-        response.sendRedirect(request.getContextPath() + "/admin/products"); // Nhập xong đá về kho tổng
+        response.sendRedirect(request.getContextPath() + "/admin/inventory");
     }
 }

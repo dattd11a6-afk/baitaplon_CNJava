@@ -21,7 +21,8 @@ public class OrderDAO {
         int orderId = -1;
         Connection conn = null;
 
-        String sqlOrder = "INSERT INTO orders (user_id, receiver_name, receiver_phone, receiver_address, total_amount, payment_method, payment_status, order_status, note) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        // Giữ nguyên INSERT cũ, giả định form checkout đang xử lý logic insert fee bằng DAO khác hoặc cập nhật sau
+        String sqlOrder = "INSERT INTO orders (user_id, receiver_name, receiver_phone, receiver_address, total_amount, payment_method, payment_status, order_status, note, shipping_type, shipping_fee, tax_fee) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         String sqlDetail = "INSERT INTO order_details (order_id, product_id, product_name, price, quantity, subtotal) VALUES (?, ?, ?, ?, ?, ?)";
         String sqlUpdateStock = "UPDATE products SET stock = stock - ? WHERE id = ?";
 
@@ -41,6 +42,10 @@ public class OrderDAO {
                 psOrder.setString(7, order.getPaymentStatus() != null ? order.getPaymentStatus() : "PENDING");
                 psOrder.setString(8, order.getOrderStatus() != null ? order.getOrderStatus() : "PENDING");
                 psOrder.setString(9, order.getNote());
+                // TRUYỀN GIÁ TRỊ VÀO CÂU LỆNH SQL
+                psOrder.setString(10, order.getShippingType());
+                psOrder.setBigDecimal(11, order.getShippingFee() != null ? order.getShippingFee() : BigDecimal.ZERO);
+                psOrder.setBigDecimal(12, order.getTaxFee() != null ? order.getTaxFee() : BigDecimal.ZERO);
                 psOrder.executeUpdate();
 
                 try (ResultSet rs = psOrder.getGeneratedKeys()) {
@@ -48,14 +53,11 @@ public class OrderDAO {
                 }
             }
 
-            // 2. Lưu Order Details & 3. Trừ Stock (ĐÃ FIX: BUNG CHI TIẾT GIỎ QUÀ)
             if (orderId != -1) {
                 try (PreparedStatement psDetail = conn.prepareStatement(sqlDetail);
                      PreparedStatement psStock = conn.prepareStatement(sqlUpdateStock)) {
 
                     for (CartItem item : cart) {
-
-                        // KIỂM TRA NẾU MÓN HÀNG NÀY LÀ GIỎ QUÀ MIX
                         if (item.getClass().getSimpleName().equals("GiftBasketCartItem")) {
                             try {
                                 Object basket = item.getClass().getMethod("getBasket").invoke(item);
@@ -68,48 +70,43 @@ public class OrderDAO {
                                 String decorName = (String) decoration.getClass().getMethod("getName").invoke(decoration);
                                 String packName = (String) packaging.getClass().getMethod("getName").invoke(packaging);
 
-                                // DÒNG 1: Lưu Khung Giỏ Quà (Chứa Phụ kiện & Lời chúc)
                                 String basketDesc = "🎁 Giỏ Mix: " + basketName + " + " + decorName + " + " + packName;
                                 if (cardMsg != null && !cardMsg.trim().isEmpty()) {
                                     basketDesc += " | Thiệp: " + cardMsg;
                                 }
 
                                 psDetail.setInt(1, orderId);
-                                psDetail.setNull(2, java.sql.Types.INTEGER); // Giỏ ảo không có product_id gốc
+                                psDetail.setNull(2, java.sql.Types.INTEGER);
                                 psDetail.setString(3, basketDesc);
-                                psDetail.setBigDecimal(4, item.getSubtotal()); // Gom tổng tiền vào dòng này
-                                psDetail.setInt(5, 1);
+                                psDetail.setBigDecimal(4, item.getSubtotal());
+                                psDetail.setDouble(5, 1.0);
                                 psDetail.setBigDecimal(6, item.getSubtotal());
                                 psDetail.addBatch();
 
-                                // DÒNG 2+: Lưu từng loại Trái cây và TRỪ KHO
                                 for (CartItem fruit : fruitItems) {
                                     psDetail.setInt(1, orderId);
                                     psDetail.setInt(2, fruit.getProduct().getId());
                                     psDetail.setString(3, "   ↪ " + fruit.getProduct().getName() + " (Trong giỏ)");
-                                    psDetail.setBigDecimal(4, java.math.BigDecimal.ZERO); // Tiền đã gom ở trên
-                                    psDetail.setInt(5, fruit.getQuantity());
+                                    psDetail.setBigDecimal(4, java.math.BigDecimal.ZERO);
+                                    psDetail.setDouble(5, fruit.getQuantity());
                                     psDetail.setBigDecimal(6, java.math.BigDecimal.ZERO);
                                     psDetail.addBatch();
 
-                                    // Trừ kho thật
-                                    psStock.setInt(1, fruit.getQuantity());
+                                    psStock.setDouble(1, fruit.getQuantity());
                                     psStock.setInt(2, fruit.getProduct().getId());
                                     psStock.addBatch();
                                 }
                             } catch (Exception e) { e.printStackTrace(); }
-                        }
-                        // KỊCH BẢN B: ĐỒ MUA LẺ BÌNH THƯỜNG
-                        else {
+                        } else {
                             psDetail.setInt(1, orderId);
                             psDetail.setInt(2, item.getProduct().getId());
                             psDetail.setString(3, item.getProduct().getName());
                             psDetail.setBigDecimal(4, item.getProduct().getPrice());
-                            psDetail.setInt(5, item.getQuantity());
+                            psDetail.setDouble(5, item.getQuantity());
                             psDetail.setBigDecimal(6, item.getSubtotal());
                             psDetail.addBatch();
 
-                            psStock.setInt(1, item.getQuantity());
+                            psStock.setDouble(1, item.getQuantity());
                             psStock.setInt(2, item.getProduct().getId());
                             psStock.addBatch();
                         }
@@ -151,12 +148,17 @@ public class OrderDAO {
                     order.setOrderStatus(rs.getString("order_status"));
                     order.setCancelReason(rs.getString("cancel_reason"));
                     order.setCreatedAt(rs.getTimestamp("created_at"));
+
+                    try {
+                        order.setShippingType(rs.getString("shipping_type"));
+                        order.setShippingFee(rs.getBigDecimal("shipping_fee"));
+                        order.setTaxFee(rs.getBigDecimal("tax_fee"));
+                    } catch (SQLException ignore) {}
+
                     list.add(order);
                 }
             }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
+        } catch (SQLException e) { e.printStackTrace(); }
         return list;
     }
 
@@ -182,17 +184,24 @@ public class OrderDAO {
                     order.setNote(rs.getString("note"));
                     order.setCancelReason(rs.getString("cancel_reason"));
                     order.setCreatedAt(rs.getTimestamp("created_at"));
+
+                    try {
+                        order.setShippingType(rs.getString("shipping_type"));
+                        order.setShippingFee(rs.getBigDecimal("shipping_fee"));
+                        order.setTaxFee(rs.getBigDecimal("tax_fee"));
+                    } catch (SQLException ignore) {}
                 }
             }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
+        } catch (SQLException e) { e.printStackTrace(); }
         return order;
     }
 
     public List<OrderDetail> getOrderDetailsByOrderId(int orderId) {
         List<OrderDetail> list = new ArrayList<>();
-        String sql = "SELECT * FROM order_details WHERE order_id = ?";
+        String sql = "SELECT od.*, p.image AS product_image, p.unit AS product_unit " +
+                "FROM order_details od " +
+                "LEFT JOIN products p ON od.product_id = p.id " +
+                "WHERE od.order_id = ?";
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -204,14 +213,24 @@ public class OrderDAO {
                     detail.setProductId(rs.getInt("product_id"));
                     detail.setProductName(rs.getString("product_name"));
                     detail.setPrice(rs.getBigDecimal("price"));
-                    detail.setQuantity(rs.getInt("quantity"));
+                    detail.setQuantity(rs.getDouble("quantity"));
                     detail.setSubtotal(rs.getBigDecimal("subtotal"));
+                    detail.setProductImage(rs.getString("product_image"));
+                    detail.setProductUnit(rs.getString("product_unit"));
+
+                    // Map Weight (fallback về 0.5kg nếu DB null)
+                    double fallbackWeight = 0.5;
+                    try {
+                        if (rs.getObject("product_weight") != null) {
+                            fallbackWeight = rs.getDouble("product_weight");
+                        }
+                    } catch (SQLException ignore) {}
+                    detail.setWeight(fallbackWeight);
+
                     list.add(detail);
                 }
             }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
+        } catch (SQLException e) { e.printStackTrace(); }
         return list;
     }
 
@@ -219,7 +238,7 @@ public class OrderDAO {
         List<Order> list = new ArrayList<>();
         String sql = "SELECT * FROM orders ORDER BY created_at DESC LIMIT ?";
         try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps =prepareStatement(sql, limit)) {
+             PreparedStatement ps = prepareStatement(sql, limit)) {
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     Order order = new Order();
@@ -261,6 +280,16 @@ public class OrderDAO {
                 order.setOrderStatus(rs.getString("order_status"));
                 order.setCancelReason(rs.getString("cancel_reason"));
                 order.setCreatedAt(rs.getTimestamp("created_at"));
+
+                int sId = rs.getInt("shipper_id");
+                if (!rs.wasNull()) order.setShipperId(sId);
+
+                try {
+                    order.setShippingType(rs.getString("shipping_type"));
+                    order.setShippingFee(rs.getBigDecimal("shipping_fee"));
+                    order.setTaxFee(rs.getBigDecimal("tax_fee"));
+                } catch (SQLException ignore) {}
+
                 list.add(order);
             }
         } catch (SQLException e) { e.printStackTrace(); }
@@ -286,6 +315,10 @@ public class OrderDAO {
                     order = new Order();
                     order.setId(rs.getInt("id"));
                     order.setUserId(rs.getInt("user_id"));
+
+                    int sId = rs.getInt("shipper_id");
+                    if (!rs.wasNull()) order.setShipperId(sId);
+
                     order.setReceiverName(rs.getString("receiver_name"));
                     order.setReceiverPhone(rs.getString("receiver_phone"));
                     order.setReceiverAddress(rs.getString("receiver_address"));
@@ -296,6 +329,12 @@ public class OrderDAO {
                     order.setNote(rs.getString("note"));
                     order.setCancelReason(rs.getString("cancel_reason"));
                     order.setCreatedAt(rs.getTimestamp("created_at"));
+
+                    try {
+                        order.setShippingType(rs.getString("shipping_type"));
+                        order.setShippingFee(rs.getBigDecimal("shipping_fee"));
+                        order.setTaxFee(rs.getBigDecimal("tax_fee"));
+                    } catch (SQLException ignore) {}
                 }
             }
         } catch (SQLException e) { e.printStackTrace(); }
@@ -363,7 +402,7 @@ public class OrderDAO {
 
             try (PreparedStatement ps3 = conn.prepareStatement(sqlRestoreStock)) {
                 for (OrderDetail detail : details) {
-                    ps3.setInt(1, detail.getQuantity());
+                    ps3.setDouble(1, detail.getQuantity());
                     ps3.setInt(2, detail.getProductId());
                     ps3.addBatch();
                 }
@@ -421,11 +460,11 @@ public class OrderDAO {
                         psDetail.setInt(2, item.getProduct().getId());
                         psDetail.setString(3, item.getProduct().getName());
                         psDetail.setBigDecimal(4, item.getProduct().getPrice());
-                        psDetail.setInt(5, item.getQuantity());
+                        psDetail.setDouble(5, item.getQuantity());
                         psDetail.setBigDecimal(6, item.getSubtotal());
                         psDetail.addBatch();
 
-                        psStock.setInt(1, item.getQuantity());
+                        psStock.setDouble(1, item.getQuantity());
                         psStock.setInt(2, item.getProduct().getId());
                         psStock.addBatch();
                     }
@@ -471,7 +510,7 @@ public class OrderDAO {
 
             try (PreparedStatement ps2 = conn.prepareStatement(sqlRestoreStock)) {
                 for (OrderDetail detail : details) {
-                    ps2.setInt(1, detail.getQuantity());
+                    ps2.setDouble(1, detail.getQuantity());
                     ps2.setInt(2, detail.getProductId());
                     ps2.addBatch();
                 }
@@ -509,9 +548,7 @@ public class OrderDAO {
                     historyList.add(h);
                 }
             }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
+        } catch (SQLException e) { e.printStackTrace(); }
         return historyList;
     }
 
@@ -526,9 +563,282 @@ public class OrderDAO {
                     total = rs.getBigDecimal(1);
                 }
             }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
+        } catch (SQLException e) { e.printStackTrace(); }
         return total;
+    }
+
+    public List<Order> getOrdersByFilterForAdmin(String status) {
+        List<Order> list = new ArrayList<>();
+        String sql = "SELECT * FROM orders";
+
+        if (status != null && !status.isEmpty() && !"ALL".equals(status)) {
+            sql += " WHERE order_status = ?";
+        }
+        sql += " ORDER BY created_at DESC";
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            if (status != null && !status.isEmpty() && !"ALL".equals(status)) {
+                ps.setString(1, status);
+            }
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Order order = new Order();
+                    order.setId(rs.getInt("id"));
+                    order.setReceiverName(rs.getString("receiver_name"));
+                    order.setReceiverPhone(rs.getString("receiver_phone"));
+                    order.setTotalAmount(rs.getBigDecimal("total_amount"));
+                    order.setPaymentMethod(rs.getString("payment_method"));
+                    order.setOrderStatus(rs.getString("order_status"));
+                    order.setCreatedAt(rs.getTimestamp("created_at"));
+
+                    int sId = rs.getInt("shipper_id");
+                    if (!rs.wasNull()) order.setShipperId(sId);
+
+                    try {
+                        order.setShippingType(rs.getString("shipping_type"));
+                        order.setShippingFee(rs.getBigDecimal("shipping_fee"));
+                        order.setTaxFee(rs.getBigDecimal("tax_fee"));
+                    } catch (SQLException ignore) {}
+
+                    list.add(order);
+                }
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return list;
+    }
+
+    // TÍNH NĂNG MỚI: Đã đổi Order By đẩy Hỏa Tốc lên trước, sau đó đến thời gian cũ (Giao nhanh, không để lưu đọng)
+    public List<Order> getOrdersByShipperId(int shipperId) {
+        List<Order> list = new ArrayList<>();
+        String sql = "SELECT * FROM orders WHERE shipper_id = ? " +
+                "ORDER BY CASE WHEN shipping_type = 'EXPRESS' THEN 1 ELSE 2 END ASC, created_at ASC";
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, shipperId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Order order = new Order();
+                    order.setId(rs.getInt("id"));
+                    order.setReceiverName(rs.getString("receiver_name"));
+                    order.setReceiverPhone(rs.getString("receiver_phone"));
+                    order.setReceiverAddress(rs.getString("receiver_address"));
+                    order.setTotalAmount(rs.getBigDecimal("total_amount"));
+                    order.setPaymentMethod(rs.getString("payment_method"));
+                    order.setOrderStatus(rs.getString("order_status"));
+                    order.setNote(rs.getString("note"));
+                    order.setCreatedAt(rs.getTimestamp("created_at"));
+                    order.setShipperId(shipperId);
+
+                    try {
+                        order.setShippingType(rs.getString("shipping_type"));
+                        order.setShippingFee(rs.getBigDecimal("shipping_fee"));
+                        order.setTaxFee(rs.getBigDecimal("tax_fee"));
+                    } catch (SQLException ignore) {}
+
+                    list.add(order);
+                }
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return list;
+    }
+
+    public Order getOrderByIdAndShipperId(int orderId, int shipperId) {
+        Order order = null;
+        String sql = "SELECT * FROM orders WHERE id = ? AND shipper_id = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, orderId);
+            ps.setInt(2, shipperId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    order = new Order();
+                    order.setId(rs.getInt("id"));
+                    order.setReceiverName(rs.getString("receiver_name"));
+                    order.setReceiverPhone(rs.getString("receiver_phone"));
+                    order.setReceiverAddress(rs.getString("receiver_address"));
+                    order.setTotalAmount(rs.getBigDecimal("total_amount"));
+                    order.setPaymentMethod(rs.getString("payment_method"));
+                    order.setPaymentStatus(rs.getString("payment_status"));
+                    order.setOrderStatus(rs.getString("order_status"));
+                    order.setNote(rs.getString("note"));
+                    order.setShipperId(shipperId);
+
+                    try {
+                        order.setShippingType(rs.getString("shipping_type"));
+                        order.setShippingFee(rs.getBigDecimal("shipping_fee"));
+                        order.setTaxFee(rs.getBigDecimal("tax_fee"));
+                    } catch (SQLException ignore) {}
+                }
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return order;
+    }
+
+    public boolean updateOrderStatusByShipper(int orderId, int shipperId, String oldStatus, String newStatus, String reason) {
+        Connection conn = null;
+        String sqlUpdateOrder = "UPDATE orders SET order_status = ? WHERE id = ? AND shipper_id = ?";
+        String sqlInsertHistory = "INSERT INTO order_status_history (order_id, old_status, new_status, changed_by, reason) VALUES (?, ?, ?, ?, ?)";
+
+        try {
+            conn = DBConnection.getConnection();
+            conn.setAutoCommit(false);
+
+            try (PreparedStatement ps1 = conn.prepareStatement(sqlUpdateOrder)) {
+                ps1.setString(1, newStatus);
+                ps1.setInt(2, orderId);
+                ps1.setInt(3, shipperId);
+
+                int rowsUpdated = ps1.executeUpdate();
+                if (rowsUpdated == 0) {
+                    conn.rollback();
+                    return false;
+                }
+            }
+
+            try (PreparedStatement ps2 = conn.prepareStatement(sqlInsertHistory)) {
+                ps2.setInt(1, orderId);
+                ps2.setString(2, oldStatus);
+                ps2.setString(3, newStatus);
+                ps2.setInt(4, shipperId);
+                ps2.setString(5, reason);
+                ps2.executeUpdate();
+            }
+
+            conn.commit();
+            return true;
+        } catch (SQLException e) {
+            if (conn != null) try { conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
+            e.printStackTrace();
+            return false;
+        } finally {
+            if (conn != null) try { conn.setAutoCommit(true); conn.close(); } catch (SQLException e) { e.printStackTrace(); }
+        }
+    }
+
+    public boolean assignShipperToOrder(int orderId, int shipperId, int adminId) {
+        Connection conn = null;
+        String sqlUpdateOrder = "UPDATE orders SET shipper_id = ?, order_status = 'PREPARING' WHERE id = ?";
+        String sqlInsertHistory = "INSERT INTO order_status_history (order_id, old_status, new_status, changed_by, reason) VALUES (?, (SELECT order_status FROM orders WHERE id = ?), 'PREPARING', ?, ?)";
+
+        try {
+            conn = DBConnection.getConnection();
+            conn.setAutoCommit(false);
+
+            try (PreparedStatement ps1 = conn.prepareStatement(sqlUpdateOrder)) {
+                ps1.setInt(1, shipperId);
+                ps1.setInt(2, orderId);
+                ps1.executeUpdate();
+            }
+
+            try (PreparedStatement ps2 = conn.prepareStatement(sqlInsertHistory)) {
+                ps2.setInt(1, orderId);
+                ps2.setInt(2, orderId);
+                ps2.setInt(3, adminId);
+                ps2.setString(4, "Admin phân công cho Shipper ID: " + shipperId);
+                ps2.executeUpdate();
+            }
+
+            conn.commit();
+            return true;
+        } catch (SQLException e) {
+            if (conn != null) try { conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
+            e.printStackTrace();
+            return false;
+        } finally {
+            if (conn != null) try { conn.setAutoCommit(true); conn.close(); } catch (SQLException e) { e.printStackTrace(); }
+        }
+    }
+
+    public List<Order> getOrdersByShipper(int shipperId) {
+        return getOrdersByShipperId(shipperId);
+    }
+
+    public List<OrderDetail> getOrderDetails(int orderId) {
+        return getOrderDetailsByOrderId(orderId);
+    }
+
+    public boolean updateOrderStatus(int orderId, String status, int shipperId, String reason) {
+        Connection conn = null;
+        String getOldStatus = "SELECT order_status FROM orders WHERE id = ?";
+        String updateOrder = "UPDATE orders SET order_status = ?, shipper_id = ? WHERE id = ?";
+        String insertHistory = "INSERT INTO order_status_history (order_id, old_status, new_status, changed_by, reason) VALUES (?, ?, ?, ?, ?)";
+
+        try {
+            conn = DBConnection.getConnection();
+            conn.setAutoCommit(false);
+
+            String oldStatus = "";
+            try (PreparedStatement ps1 = conn.prepareStatement(getOldStatus)) {
+                ps1.setInt(1, orderId);
+                try (ResultSet rs = ps1.executeQuery()) {
+                    if (rs.next()) oldStatus = rs.getString("order_status");
+                }
+            }
+
+            try (PreparedStatement ps2 = conn.prepareStatement(updateOrder)) {
+                ps2.setString(1, status);
+                ps2.setInt(2, shipperId);
+                ps2.setInt(3, orderId);
+                ps2.executeUpdate();
+            }
+
+            try (PreparedStatement ps3 = conn.prepareStatement(insertHistory)) {
+                ps3.setInt(1, orderId);
+                ps3.setString(2, oldStatus);
+                ps3.setString(3, status);
+                ps3.setInt(4, shipperId);
+                ps3.setString(5, reason);
+                ps3.executeUpdate();
+            }
+
+            conn.commit();
+            return true;
+        } catch (SQLException e) {
+            if (conn != null) try { conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
+            e.printStackTrace();
+            return false;
+        } finally {
+            if (conn != null) try { conn.setAutoCommit(true); conn.close(); } catch (SQLException e) { e.printStackTrace(); }
+        }
+    }
+
+    public boolean rejectOrderByShipper(int orderId, int shipperId) {
+        Connection conn = null;
+        String sqlUpdateOrder = "UPDATE orders SET shipper_id = NULL, order_status = 'CONFIRMED' WHERE id = ? AND shipper_id = ?";
+        String sqlInsertHistory = "INSERT INTO order_status_history (order_id, old_status, new_status, changed_by, reason) VALUES (?, 'PREPARING', 'CONFIRMED', ?, 'Tài xế đã TỪ CHỐI nhận đơn hàng này.')";
+
+        try {
+            conn = DBConnection.getConnection();
+            conn.setAutoCommit(false);
+
+            try (PreparedStatement ps1 = conn.prepareStatement(sqlUpdateOrder)) {
+                ps1.setInt(1, orderId);
+                ps1.setInt(2, shipperId);
+                int rows = ps1.executeUpdate();
+                if(rows == 0) {
+                    conn.rollback();
+                    return false;
+                }
+            }
+
+            try (PreparedStatement ps2 = conn.prepareStatement(sqlInsertHistory)) {
+                ps2.setInt(1, orderId);
+                ps2.setInt(2, shipperId);
+                ps2.executeUpdate();
+            }
+
+            conn.commit();
+            return true;
+        } catch (SQLException e) {
+            if (conn != null) try { conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
+            e.printStackTrace();
+            return false;
+        } finally {
+            if (conn != null) try { conn.setAutoCommit(true); conn.close(); } catch (SQLException e) { e.printStackTrace(); }
+        }
     }
 }

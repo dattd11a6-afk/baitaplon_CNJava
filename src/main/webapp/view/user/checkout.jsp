@@ -67,6 +67,18 @@
                         <input type="hidden" name="shippingFee" id="shippingFeeInput" value="0">
                     </div>
 
+                    <!-- GÓI VẬN CHUYỂN DẠNG COMBO BOX (DROPDOWN) - ĐÃ CẬP NHẬT ĐỊNH DẠNG VNĐ -->
+                    <div class="checkout-box">
+                        <h5 class="fw-bold mb-3 border-bottom pb-2"><i class="fa-solid fa-truck-fast text-warning me-2"></i>Chọn gói Vận chuyển</h5>
+
+                        <label class="form-label text-muted small">Phương thức giao hàng <span class="text-danger">*</span></label>
+                        <select class="form-select form-select-lg fw-medium text-dark shadow-sm border-secondary" name="shippingType" id="shippingTypeSelect" onchange="updatePricingUI()" required>
+                            <option value="" disabled selected>-- Chọn phương thức giao hàng --</option>
+                            <option value="STANDARD">Giao Hàng Tiêu Chuẩn (2-3 ngày) [+<fmt:formatNumber value="${settings['SHIP_STANDARD']}" type="currency" currencySymbol="₫" maxFractionDigits="0"/>]</option>
+                            <option value="EXPRESS">Giao Hỏa Tốc 2H [+<fmt:formatNumber value="${settings['SHIP_EXPRESS']}" type="currency" currencySymbol="₫" maxFractionDigits="0"/>]</option>
+                        </select>
+                    </div>
+
                     <div class="checkout-box">
                         <h5 class="fw-bold mb-3 border-bottom pb-2"><i class="fa-regular fa-clock text-primary me-2"></i>Thời gian & Thanh toán</h5>
                         <div class="mb-3">
@@ -88,12 +100,11 @@
                             <label class="form-check-label" for="qr"><i class="fa-solid fa-qrcode text-primary mx-1"></i> Chuyển khoản VietQR / Momo</label>
                         </div>
 
-                        <!-- Cờ ẩn dùng điểm (Giữ nguyên logic cũ của bác) -->
                         <input type="hidden" name="usePoints" value="${param.usePoints != null ? param.usePoints : 'false'}">
                     </div>
                 </div>
 
-                <!-- CỘT PHẢI: TÓM TẮT ĐƠN HÀNG (CHỈ HIỂN THỊ) -->
+                <!-- CỘT PHẢI: TÓM TẮT ĐƠN HÀNG -->
                 <div class="col-lg-5">
                     <div class="checkout-box sticky-top" style="top: 20px; border-top: 4px solid #198754;">
                         <h5 class="fw-bold mb-4 text-center">TÓM TẮT ĐƠN HÀNG</h5>
@@ -107,24 +118,28 @@
                             </c:forEach>
                         </div>
 
-                        <%-- Tính toán tổng tiền sản phẩm trong JSP để gán vào JS --%>
                         <c:set var="calcSubtotal" value="0" />
                         <c:forEach var="item" items="${sessionScope.cart}">
                             <c:set var="calcSubtotal" value="${calcSubtotal + item.subtotal}" />
                         </c:forEach>
 
                         <div class="summary-item text-muted">
-                            <span>Tạm tính</span>
+                            <span>Tạm tính (Chưa gồm Thuế & Phí)</span>
                             <span><fmt:formatNumber value="${calcSubtotal}" type="currency" currencySymbol="₫" maxFractionDigits="0"/></span>
                         </div>
 
                         <div class="summary-item text-muted">
                             <span>Phí vận chuyển</span>
-                            <span id="shippingFeeLabel" class="text-dark fw-medium">Chưa xác định</span>
+                            <span id="shippingFeeLabel" class="text-dark fw-bold">Vui lòng chọn...</span>
+                        </div>
+
+                        <div class="summary-item text-muted pb-2 border-bottom">
+                            <span>Thuế VAT (${settings['TAX_RATE']}%)</span>
+                            <span id="taxFeeLabel" class="text-danger fw-bold">...</span>
                         </div>
 
                         <c:if test="${sessionScope.discountAmount != null && sessionScope.discountAmount > 0}">
-                            <div class="summary-item text-success">
+                            <div class="summary-item text-success mt-2">
                                 <span>Khuyến mãi (${sessionScope.appliedVoucher.code})</span>
                                 <span>- <fmt:formatNumber value="${sessionScope.discountAmount}" type="currency" currencySymbol="₫" maxFractionDigits="0"/></span>
                             </div>
@@ -132,11 +147,11 @@
 
                         <div class="summary-item total">
                             <span>Tổng cộng</span>
-                            <span class="text-danger" id="finalTotalLabel">...</span>
+                            <span class="text-danger" id="finalTotalLabel" style="font-size: 24px;">...</span>
                         </div>
 
-                        <button type="button" class="btn btn-success w-100 py-3 mt-3 fw-bold fs-5" onclick="processCheckout()">ĐẶT HÀNG NGAY</button>
-                        <div class="text-center mt-3"><a href="${pageContext.request.contextPath}/cart" class="text-decoration-none text-muted small"><i class="fa-solid fa-arrow-left"></i> Quay lại Giỏ hàng</a></div>
+                        <button type="button" class="btn btn-success w-100 py-3 mt-3 fw-bold fs-5 shadow" onclick="processCheckout()">XÁC NHẬN ĐẶT HÀNG</button>
+                        <div class="text-center mt-3"><a href="${pageContext.request.contextPath}/cart" class="text-decoration-none text-muted small">Quay lại Giỏ hàng</a></div>
                     </div>
                 </div>
             </div>
@@ -144,40 +159,69 @@
     </div>
 
     <script>
-        // 1. Dữ liệu tính toán từ Server
+        // 1. Dữ liệu từ Server
         const cartTotal = parseFloat('${calcSubtotal}');
         const discountAmount = parseFloat('${sessionScope.discountAmount != null ? sessionScope.discountAmount : 0}');
-        let currentShippingFee = ${not empty sessionScope.user.address ? 25000 : 0};
 
+        // Load cấu hình từ Admin
+        const taxRate = parseFloat('${settings["TAX_RATE"]}') || 0;
+        const feeStandard = parseFloat('${settings["SHIP_STANDARD"]}') || 0;
+        const feeExpress = parseFloat('${settings["SHIP_EXPRESS"]}') || 0;
+
+        // 2. Logic tính tiền tự động
         function updatePricingUI() {
-            document.getElementById("shippingFeeInput").value = currentShippingFee;
-            document.getElementById("shippingFeeLabel").innerText = currentShippingFee === 0 ? "Miễn phí" : new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(currentShippingFee);
+            // Lấy Phương thức Ship từ Combo box
+            const shippingSelect = document.getElementById("shippingTypeSelect");
+            let selectedShipFee = 0;
 
-            let finalTotal = cartTotal + currentShippingFee - discountAmount;
+            // Format chuẩn VNĐ
+            const formatter = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' });
+
+            if (shippingSelect.value === 'STANDARD') {
+                selectedShipFee = feeStandard;
+                document.getElementById("shippingFeeLabel").innerText = '+ ' + formatter.format(selectedShipFee);
+            } else if (shippingSelect.value === 'EXPRESS') {
+                selectedShipFee = feeExpress;
+                document.getElementById("shippingFeeLabel").innerText = '+ ' + formatter.format(selectedShipFee);
+            } else {
+                // Chưa chọn phương thức
+                document.getElementById("shippingFeeLabel").innerText = 'Vui lòng chọn...';
+            }
+
+            // Tiền Thuế = (Tiền Giỏ Hàng) * Thuế suất
+            const taxAmount = cartTotal * (taxRate / 100);
+
+            // Gán dữ liệu lên form ẩn
+            document.getElementById("shippingFeeInput").value = selectedShipFee;
+
+            // Cập nhật giao diện tiền Thuế
+            document.getElementById("taxFeeLabel").innerText = '+ ' + formatter.format(taxAmount);
+
+            // Tổng thanh toán
+            let finalTotal = cartTotal + selectedShipFee + taxAmount - discountAmount;
             if(finalTotal < 0) finalTotal = 0;
-            document.getElementById("finalTotalLabel").innerText = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(finalTotal);
+            document.getElementById("finalTotalLabel").innerText = formatter.format(finalTotal);
         }
 
+        // Chạy lần đầu khi load trang
         updatePricingUI();
 
-        // 2. Flatpickr
+        // 3. Flatpickr
         flatpickr("#deliveryTimePicker", {
             enableTime: true, dateFormat: "d/m/Y H:i", minDate: "today",
             minTime: "07:00", maxTime: "20:00", locale: "vn"
         });
 
-        // 3. Logic Địa chỉ & Tính Ship
+        // 4. Logic Địa chỉ
         function toggleAddressForm() {
             const dropdown = document.getElementById("addressBook");
             const newForm = document.getElementById("newAddressForm");
             if (dropdown.value === "NEW") {
                 newForm.style.display = "block";
                 document.getElementById("fullAddress").value = "";
-                currentShippingFee = 0; updatePricingUI();
             } else {
                 newForm.style.display = "none";
                 document.getElementById("fullAddress").value = "${sessionScope.user.address}";
-                currentShippingFee = 25000; updatePricingUI();
             }
         }
 
@@ -195,12 +239,8 @@
                     if (this.value !== "") {
                         const selectedTinh = data.find(n => n.Id === this.value);
                         selectedTinh.Districts.forEach(quan => { quanSelect.options.add(new Option(quan.Name, quan.Id)); });
-                        currentShippingFee = (this.value === "01" ? 20000 : 40000);
-                        if(cartTotal >= 500000) currentShippingFee = 0; // Freeship > 500k
-                        updatePricingUI();
                     } else {
                         quanSelect.disabled = true; phuongSelect.disabled = true;
-                        currentShippingFee = 0; updatePricingUI();
                     }
                 });
 
@@ -214,8 +254,17 @@
                 });
             });
 
-        // 4. Submit Gộp Địa Chỉ
+        // 5. Gửi Form Đặt Hàng kèm Validate Combo Box
         function processCheckout() {
+            // Validate Phương thức giao hàng
+            const shippingSelect = document.getElementById("shippingTypeSelect");
+            if(shippingSelect && shippingSelect.value === "") {
+                alert("Vui lòng chọn Gói vận chuyển trước khi đặt hàng!");
+                shippingSelect.focus();
+                return;
+            }
+
+            // Validate Địa chỉ mới
             const dropdown = document.getElementById("addressBook");
             if(dropdown && dropdown.value === "NEW") {
                 const tinh = document.getElementById("tinh");
@@ -231,6 +280,7 @@
                 const tenPhuong = phuong.options[phuong.selectedIndex].text;
                 document.getElementById("fullAddress").value = sonha + ", " + tenPhuong + ", " + tenQuan + ", " + tenTinh;
             }
+
             document.getElementById("checkoutForm").submit();
         }
     </script>

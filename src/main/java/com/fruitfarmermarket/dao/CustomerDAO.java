@@ -12,7 +12,6 @@ public class CustomerDAO {
     // Lấy danh sách Khách hàng & Tổng chi tiêu
     public List<CustomerDTO> getAllCustomers() {
         List<CustomerDTO> list = new ArrayList<>();
-        // Lưu ý: Tên cột 'full_name' có thể thay đổi tùy DB của bạn (ví dụ: 'name' hoặc 'fullname')
         String sql = "SELECT u.id, u.full_name, u.email, u.phone, u.status, u.created_at, " +
                 "COALESCE(SUM(o.total_amount), 0) AS total_spent " +
                 "FROM users u " +
